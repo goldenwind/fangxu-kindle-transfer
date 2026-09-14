@@ -1,5 +1,7 @@
 # 方序传书（Fangxu Kindle Transfer）
 
+**简体中文** | [English](./README_EN.md)
+
 [![Go 1.22+](https://img.shields.io/badge/Go-1.22%2B-00ADD8?logo=go)](https://go.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-3446B7.svg)](./LICENSE)
 [![macOS](https://img.shields.io/badge/macOS-Intel%20%7C%20Apple%20Silicon-172039?logo=apple)](#macos)
@@ -9,8 +11,6 @@
 > 方寸之间，自有书序。
 
 方序传书是一款免费、开源、无需安装的 Kindle 局域网传书工具。它支持在同一 Wi-Fi 下通过 Kindle 内置浏览器下载 AZW3、MOBI、KFX、AZW、PRC、TXT 电子书，也能在电脑端快速定位 EPUB、PDF、DOCX 和图片文件并通过 Amazon Send to Kindle 云端传书，兼容 macOS、Windows、Linux、Intel、Apple Silicon 与 ARM64。
-
-**English:** Fangxu Kindle Transfer is a free, open-source, zero-setup ebook transfer tool for Kindle. Share AZW3, MOBI, KFX, AZW, PRC, and TXT files over local Wi-Fi, or quickly locate EPUB, PDF, DOCX, and image files for Amazon Send to Kindle. It supports macOS, Windows, and Linux on x86-64 and ARM64, with a responsive bilingual Chinese/English interface.
 
 关键词：Kindle 传书、Kindle Transfer、Send to Kindle、Kindle 局域网传书、Kindle 浏览器下载、AZW3、MOBI、KFX、EPUB、PDF、macOS、Windows、Linux。
 

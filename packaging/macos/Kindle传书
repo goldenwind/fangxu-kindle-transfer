@@ -1,0 +1,6 @@
+#!/bin/sh
+
+kindle_macos_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+
+/usr/bin/nohup "$kindle_macos_dir/kindle-send-bin" >/dev/null 2>&1 &
+exit 0

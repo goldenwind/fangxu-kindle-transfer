@@ -1,0 +1,4 @@
+/kindle-send
+/dist/
+.DS_Store
+*.log

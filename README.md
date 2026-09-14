@@ -4,9 +4,9 @@
 
 [![Go 1.22+](https://img.shields.io/badge/Go-1.22%2B-00ADD8?logo=go)](https://go.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-3446B7.svg)](./LICENSE)
-[![macOS](https://img.shields.io/badge/macOS-Intel%20%7C%20Apple%20Silicon-172039?logo=apple)](#下载)
+[![macOS](<https://img.shields.io/badge/macOS-Intel%20%7C%20Apple%20Silicon-172039?logo=apple>)](#下载)
 [![Windows](https://img.shields.io/badge/Windows-x86--64-172039?logo=windows)](#下载)
-[![Linux](https://img.shields.io/badge/Linux-x86--64%20%7C%20ARM64-172039?logo=linux)](#下载)
+[![Linux](<https://img.shields.io/badge/Linux-x86--64%20%7C%20ARM64-172039?logo=linux>)](#下载)
 
 > 方寸之间，自有书序。
 
@@ -18,12 +18,12 @@
 
 前往 [GitHub Releases](https://github.com/goldenwind/kindle-transfer/releases) 下载对应版本：
 
-| 系统 | 下载文件 |
-| --- | --- |
-| Windows | `kindle-send-windows-amd64.exe` |
-| macOS | `Fangxu-Kindle-Transfer-macOS.zip` |
-| Linux x86-64 | `kindle-send-linux-amd64` |
-| Linux ARM64 | `kindle-send-linux-arm64` |
+| 系统         | 下载文件                             |
+| ------------ | ------------------------------------ |
+| Windows      | `kindle-send-windows-amd64.exe`    |
+| macOS        | `Fangxu-Kindle-Transfer-macOS.zip` |
+| Linux x86-64 | `kindle-send-linux-amd64`          |
+| Linux ARM64  | `kindle-send-linux-arm64`          |
 
 ## 快速上手
 
@@ -44,6 +44,8 @@
 ![Amazon Send to Kindle 文件上传页面](./docs/images/send-to-kindle-upload.png)
 
 电脑端点击文件可复制完整路径；点击“复制并打开 Send to Kindle”会复制路径并打开 [Amazon Send to Kindle](https://www.amazon.com/sendtokindle)。受浏览器安全限制，仍需在上传窗口中手动选择文件。
+
+> **Amazon 账号地区说明：** Kindle 中国电子书店已于 2023 年 6 月 30 日停止运营，并于 2024 年 6 月 30 日停止云端下载服务。使用 Send to Kindle、移动端或 Email 传书时，需要注册美区 Amazon 账号，并在 Kindle 阅读器和 Kindle App 中登录同一个账号。
 
 ## 主要功能
 
@@ -83,6 +85,29 @@ go run . --dir "/你的/电子书目录"
 ```
 
 未指定 `--dir` 时使用当前用户的 Downloads 目录；默认监听 `0.0.0.0:0`，由系统分配空闲端口。
+
+## 在 移动端 传书
+
+也可以使用 Android 手机、iPhone 或 iPad 上的 Kindle App 将电子书发送到 Kindle：
+
+1. 下载并安装 Kindle App：
+   - iPhone / iPad：[App Store](https://apps.apple.com/us/app/amazon-kindle-reading-app/id302584613)
+   - Android：[Google Play](https://play.google.com/store/apps/details?id=com.amazon.kindle&hl=en_US) 或 [APKMirror](https://www.apkmirror.com/apk/amazon-mobile-llc/amazon-kindle/)
+2. 在系统的文件管理器或其他 App 中找到要传递的电子书，点击“分享”，然后选择 Kindle。
+3. 在 Kindle App 和 Kindle 阅读器上登录同一个 Amazon 账号，并确保账号所属地区一致。
+4. 等待同步完成，即可在 Kindle 书库中找到并下载这本书。
+
+## 通过 Email 传书
+
+每台 Kindle 都有一个专用的 Send to Kindle 邮箱，可以通过发送邮件将电子书加入 Kindle 书库：
+
+1. 登录美区 Amazon 的[管理您的内容和设备](https://www.amazon.com/mycd)，进入“首选项”中的“个人文档设置”。
+2. 在“Send to Kindle 电子邮箱设置”中找到目标 Kindle 的邮箱地址。
+3. 在“已认可的个人文档电子邮箱列表”中添加你准备使用的发件邮箱，否则邮件不会被接收。
+4. 新建邮件，将电子书作为附件发送到 Kindle 专用邮箱；主题和正文可以留空。
+5. 将 Kindle 连接网络并同步，即可在书库中找到并下载电子书。
+
+单封邮件最多可添加 25 个附件，附件总大小不能超过 50 MB；文件格式需符合上文“Send to Kindle”支持的格式。
 
 ## 安全提示
 

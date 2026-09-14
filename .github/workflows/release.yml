@@ -12,11 +12,13 @@ jobs:
   build-and-release:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v7
         with:
-          go-version: "1.22.x"
-          cache: true
+          # Go 1.22 binaries cannot run on current macOS runners because they
+          # lack the LC_UUID load command required by the newer loader.
+          go-version: "1.24.x"
+          cache: false
       - name: Test
         run: go test ./...
       - name: Build release files

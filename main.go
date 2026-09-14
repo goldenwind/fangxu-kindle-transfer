@@ -784,6 +784,14 @@ func chooseDirectory() (string, error) {
 	case "windows":
 		script := `Add-Type -AssemblyName System.Windows.Forms; $dialog = New-Object System.Windows.Forms.FolderBrowserDialog; $dialog.Description = '选择电子书目录'; $dialog.ShowNewFolderButton = $true; if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Write-Output $dialog.SelectedPath }`
 		command = exec.Command("powershell.exe", "-NoProfile", "-STA", "-Command", script)
+	case "linux":
+		if _, err := exec.LookPath("zenity"); err == nil {
+			command = exec.Command("zenity", "--file-selection", "--directory", "--title=选择电子书目录")
+		} else if _, err := exec.LookPath("kdialog"); err == nil {
+			command = exec.Command("kdialog", "--getexistingdirectory", ".", "--title", "选择电子书目录")
+		} else {
+			return "", errors.New("未找到 zenity 或 kdialog，请安装其中一个或手动输入目录路径")
+		}
 	default:
 		return "", errors.New("当前系统不支持可视化目录选择")
 	}
@@ -1008,12 +1016,12 @@ const indexTemplate = `<!doctype html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="方序传书是一款免费开源的 Kindle 局域网电子书传输工具，支持 AZW3、MOBI、KFX、EPUB、PDF 和 Send to Kindle，适用于 macOS 与 Windows。">
-  <meta name="keywords" content="Kindle传书,Kindle transfer,Send to Kindle,电子书传输,Kindle浏览器,AZW3,MOBI,EPUB,macOS,Windows">
+  <meta name="description" content="方序传书是一款免费开源的 Kindle 局域网电子书传输工具，支持 AZW3、MOBI、KFX、EPUB、PDF 和 Send to Kindle，适用于 macOS、Windows 与 Linux。">
+  <meta name="keywords" content="Kindle传书,Kindle transfer,Send to Kindle,电子书传输,Kindle浏览器,AZW3,MOBI,EPUB,macOS,Windows,Linux">
   <meta name="robots" content="index,follow">
   <meta property="og:type" content="website">
   <meta property="og:title" content="方序传书 · Kindle Transfer">
-  <meta property="og:description" content="Free, open-source Kindle ebook transfer over local Wi-Fi, with Send to Kindle support for macOS and Windows.">
+  <meta property="og:description" content="Free, open-source Kindle ebook transfer over local Wi-Fi, with Send to Kindle support for macOS, Windows, and Linux.">
   <title>方序传书</title>
   <style>
     * { box-sizing: border-box; }
@@ -1229,6 +1237,7 @@ const indexTemplate = `<!doctype html>
         <strong class="upload-guide-title" data-i18n="uploadGuideTitle">选择文件时，快速使用刚复制的完整路径</strong>
         <span class="upload-guide-platform" data-i18n="windowsGuide">Windows：在文件选择窗口的“文件名”输入框按 Ctrl + V 粘贴路径，再点击“打开”。</span>
         <span class="upload-guide-platform" data-i18n="macGuide">macOS：在文件选择窗口按 Command + Shift + G，粘贴路径后按 Return，再点击“打开”。</span>
+        <span class="upload-guide-platform" data-i18n="linuxGuide">Linux：在文件选择窗口按 Ctrl + L，粘贴路径后按 Enter，再点击“打开”。</span>
       </div>
       <div class="filter-toolbar">
         <div class="format-filters" role="group" aria-label="筛选 Send to Kindle 格式">
@@ -1269,7 +1278,7 @@ const indexTemplate = `<!doctype html>
         allCount: '全部（{count}）', sortByName: '按文件名排序', sortByTime: '按时间排序', noFormatBooks: '没有这种格式的电子书。', noDirectBooks: '没有可通过 Kindle 浏览器直接下载的电子书。',
         sendNote: 'Send to Kindle 仅支持 PDF、DOC、DOCX、TXT、RTF、HTM、HTML、PNG、GIF、JPG、JPEG、BMP 和 EPUB，单个文件最大 200 MB。', fileLimit: '文件限制：', fileLimitText: '本页只列出符合格式及大小限制的文件。',
         sendActionNote: '点击书籍可复制完整路径；点击“复制并打开Send to Kindle”可复制路径并前往上传页面。', uploadGuideTitle: '选择文件时，快速使用刚复制的完整路径',
-        windowsGuide: 'Windows：在文件选择窗口的“文件名”输入框按 Ctrl + V 粘贴路径，再点击“打开”。', macGuide: 'macOS：在文件选择窗口按 Command + Shift + G，粘贴路径后按 Return，再点击“打开”。',
+        windowsGuide: 'Windows：在文件选择窗口的“文件名”输入框按 Ctrl + V 粘贴路径，再点击“打开”。', macGuide: 'macOS：在文件选择窗口按 Command + Shift + G，粘贴路径后按 Return，再点击“打开”。', linuxGuide: 'Linux：在文件选择窗口按 Ctrl + L，粘贴路径后按 Enter，再点击“打开”。',
         copyAndOpen: '复制并打开Send to Kindle', noSendBooks: '没有需要通过 Send to Kindle 发送的电子书。', localOnly: '方序传书 · 文件只在你的局域网内流转', sharedDirectoryPrefix: '共享目录：',
         copiedPath: '已复制路径：{path}', copyFailed: '复制失败，请手动选择页面中的路径。'
       },
@@ -1286,7 +1295,7 @@ const indexTemplate = `<!doctype html>
         allCount: 'All ({count})', sortByName: 'Sort by filename', sortByTime: 'Sort by time', noFormatBooks: 'No ebooks in this format.', noDirectBooks: 'No ebooks available for direct Kindle browser download.',
         sendNote: 'Send to Kindle supports PDF, DOC, DOCX, TXT, RTF, HTM, HTML, PNG, GIF, JPG, JPEG, BMP, and EPUB, with a maximum file size of 200 MB.', fileLimit: 'File limits: ', fileLimitText: 'Only files that meet the format and size limits are listed here.',
         sendActionNote: 'Click a book to copy its full path. Use “Copy & open Send to Kindle” to copy the path and open the upload page.', uploadGuideTitle: 'Quickly select a file using the copied full path',
-        windowsGuide: 'Windows: paste the path with Ctrl + V into the File name field, then click Open.', macGuide: 'macOS: press Command + Shift + G, paste the path, press Return, then click Open.',
+        windowsGuide: 'Windows: paste the path with Ctrl + V into the File name field, then click Open.', macGuide: 'macOS: press Command + Shift + G, paste the path, press Return, then click Open.', linuxGuide: 'Linux: press Ctrl + L in the file picker, paste the path, press Enter, then click Open.',
         copyAndOpen: 'Copy & open Send to Kindle', noSendBooks: 'No ebooks are available for Send to Kindle.', localOnly: 'Fangxu Transfer · Files stay on your local network', sharedDirectoryPrefix: 'Shared folder: ',
         copiedPath: 'Path copied: {path}', copyFailed: 'Copy failed. Please select the path manually.'
       }

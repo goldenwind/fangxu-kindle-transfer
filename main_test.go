@@ -543,6 +543,7 @@ func TestSendToKindleTabCopiesAbsolutePaths(t *testing.T) {
 		"选择文件时，快速使用刚复制的完整路径",
 		"Windows：", "Ctrl + V", "文件名",
 		"macOS：", "Command + Shift + G", "Return",
+		"Linux：", "Ctrl + L", "Enter",
 	} {
 		if !strings.Contains(body, expected) {
 			t.Errorf("Send to Kindle upload guide does not contain %q", expected)

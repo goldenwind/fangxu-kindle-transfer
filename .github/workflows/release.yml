@@ -25,6 +25,8 @@ jobs:
         run: |
           mkdir -p dist build/Kindle传书.app/Contents/MacOS
           CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags=-s -o dist/kindle-send-windows-amd64.exe .
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags=-s -o dist/kindle-send-linux-amd64 .
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags=-s -o dist/kindle-send-linux-arm64 .
           CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags=-s -o build/kindle-send-macos-amd64 .
           CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags=-s -o build/kindle-send-macos-arm64 .
           lipo -create -output dist/kindle-send-macos-universal build/kindle-send-macos-amd64 build/kindle-send-macos-arm64
@@ -37,4 +39,4 @@ jobs:
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${GITHUB_REF_NAME}" dist/Fangxu-Kindle-Transfer-macOS.zip dist/kindle-send-macos-universal dist/kindle-send-windows-amd64.exe --generate-notes --title "方序传书 ${GITHUB_REF_NAME}"
+        run: gh release create "${GITHUB_REF_NAME}" dist/Fangxu-Kindle-Transfer-macOS.zip dist/kindle-send-macos-universal dist/kindle-send-windows-amd64.exe dist/kindle-send-linux-amd64 dist/kindle-send-linux-arm64 --generate-notes --title "方序传书 ${GITHUB_REF_NAME}"

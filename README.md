@@ -4,14 +4,15 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-3446B7.svg)](./LICENSE)
 [![macOS](https://img.shields.io/badge/macOS-Intel%20%7C%20Apple%20Silicon-172039?logo=apple)](#macos)
 [![Windows](https://img.shields.io/badge/Windows-x86--64-172039?logo=windows)](#windows)
+[![Linux](https://img.shields.io/badge/Linux-x86--64%20%7C%20ARM64-172039?logo=linux)](#linux)
 
 > 方寸之间，自有书序。
 
-方序传书是一款免费、开源、无需安装的 Kindle 局域网传书工具。它支持在同一 Wi-Fi 下通过 Kindle 内置浏览器下载 AZW3、MOBI、KFX、AZW、PRC、TXT 电子书，也能在电脑端快速定位 EPUB、PDF、DOCX 和图片文件并通过 Amazon Send to Kindle 云端传书，兼容 macOS、Windows、Intel 与 Apple Silicon。
+方序传书是一款免费、开源、无需安装的 Kindle 局域网传书工具。它支持在同一 Wi-Fi 下通过 Kindle 内置浏览器下载 AZW3、MOBI、KFX、AZW、PRC、TXT 电子书，也能在电脑端快速定位 EPUB、PDF、DOCX 和图片文件并通过 Amazon Send to Kindle 云端传书，兼容 macOS、Windows、Linux、Intel、Apple Silicon 与 ARM64。
 
-**English:** Fangxu Kindle Transfer is a free, open-source, zero-setup ebook transfer tool for Kindle. Share AZW3, MOBI, KFX, AZW, PRC, and TXT files over local Wi-Fi, or quickly locate EPUB, PDF, DOCX, and image files for Amazon Send to Kindle. It supports macOS, Windows, Intel Macs, and Apple Silicon, with a responsive bilingual Chinese/English interface.
+**English:** Fangxu Kindle Transfer is a free, open-source, zero-setup ebook transfer tool for Kindle. Share AZW3, MOBI, KFX, AZW, PRC, and TXT files over local Wi-Fi, or quickly locate EPUB, PDF, DOCX, and image files for Amazon Send to Kindle. It supports macOS, Windows, and Linux on x86-64 and ARM64, with a responsive bilingual Chinese/English interface.
 
-关键词：Kindle 传书、Kindle Transfer、Send to Kindle、Kindle 局域网传书、Kindle 浏览器下载、AZW3、MOBI、KFX、EPUB、PDF、macOS、Windows。
+关键词：Kindle 传书、Kindle Transfer、Send to Kindle、Kindle 局域网传书、Kindle 浏览器下载、AZW3、MOBI、KFX、EPUB、PDF、macOS、Windows、Linux。
 
 ## 核心特性
 
@@ -49,6 +50,8 @@ EPUB、PDF、DOCX、DOC、RTF、HTML/HTM、JPG/JPEG、PNG、GIF 和 BMP 不生�
 | `kindle-send-windows-amd64.exe` | Windows | x86-64（绝大多数 Windows 电脑） |
 | `Fangxu-Kindle-Transfer-macOS.zip` | macOS 双击版 | Intel、Apple Silicon（M1/M2/M3/M4 等） |
 | `kindle-send-macos-universal` | macOS 命令行版 | Intel、Apple Silicon |
+| `kindle-send-linux-amd64` | Linux | x86-64 |
+| `kindle-send-linux-arm64` | Linux | ARM64（树莓派、ARM 服务器等） |
 
 ## 双击启动
 
@@ -110,6 +113,23 @@ chmod +x kindle-send-macos-universal
 ./kindle-send-macos-universal --dir "/Users/你的用户名/Books"
 ```
 
+### Linux
+
+根据设备架构下载 `kindle-send-linux-amd64` 或 `kindle-send-linux-arm64`，然后执行：
+
+```bash
+chmod +x kindle-send-linux-amd64
+./kindle-send-linux-amd64
+```
+
+ARM64 设备请将上述文件名替换为 `kindle-send-linux-arm64`。程序会通过 `xdg-open` 自动打开控制页；桌面环境安装了 `zenity` 或 `kdialog` 时，可以直接使用“选择文件夹”按钮，否则可在页面中手动输入共享目录。
+
+指定电子书目录或固定端口：
+
+```bash
+./kindle-send-linux-amd64 --dir "/home/yourname/Books" --listen 0.0.0.0:9000
+```
+
 ## 从源码运行
 
 ```bash
@@ -157,6 +177,14 @@ Windows 对应命令：
 # Windows x86-64
 CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build \
   -trimpath -ldflags=-s -o dist/kindle-send-windows-amd64.exe .
+
+# Linux x86-64
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+  -trimpath -ldflags=-s -o dist/kindle-send-linux-amd64 .
+
+# Linux ARM64
+CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build \
+  -trimpath -ldflags=-s -o dist/kindle-send-linux-arm64 .
 
 # macOS Intel
 CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build \

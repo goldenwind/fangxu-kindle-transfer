@@ -12,6 +12,8 @@
 
 免费、开源、无需安装的 Kindle 传书工具。在同一 Wi-Fi 下，用 Kindle 内置浏览器直接下载电子书；其他格式可在电脑端快速打开 Amazon Send to Kindle 发送。
 
+![方序传书电脑端控制页](./docs/images/fangxu-kindle-transfer-desktop.png)
+
 ## 下载
 
 前往 [GitHub Releases](https://github.com/goldenwind/kindle-transfer/releases) 下载对应版本：

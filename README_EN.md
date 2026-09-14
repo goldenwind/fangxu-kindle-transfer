@@ -12,6 +12,8 @@
 
 A free, open-source, zero-setup Kindle transfer tool. Download ebooks through the Kindle built-in browser over local Wi-Fi, or quickly open Amazon Send to Kindle for other formats.
 
+![Fangxu Kindle Transfer desktop control page](./docs/images/fangxu-kindle-transfer-desktop.png)
+
 ## Download
 
 Get the appropriate package from [GitHub Releases](https://github.com/goldenwind/kindle-transfer/releases):

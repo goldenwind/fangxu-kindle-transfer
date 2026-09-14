@@ -41,6 +41,8 @@ Launching the application again opens the existing service instead of starting a
 - **Kindle built-in browser:** `AZW3`, `MOBI`, `TXT`, `AZW`, `KFX`, `PRC`
 - **Send to Kindle:** `PDF`, `DOC`, `DOCX`, `TXT`, `RTF`, `HTM`, `HTML`, `PNG`, `GIF`, `JPG`, `JPEG`, `BMP`, `EPUB`; up to 200 MB per file
 
+![Amazon Send to Kindle file upload page](./docs/images/send-to-kindle-upload.png)
+
 On the desktop page, click a file to copy its full path. **Copy and open Send to Kindle** copies the path and opens [Amazon Send to Kindle](https://www.amazon.com/sendtokindle). Browser security still requires you to select the file manually in the upload dialog.
 
 ## Features

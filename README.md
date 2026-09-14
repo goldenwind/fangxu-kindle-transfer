@@ -41,6 +41,8 @@
 - **Kindle 内置浏览器下载：** `AZW3`、`MOBI`、`TXT`、`AZW`、`KFX`、`PRC`
 - **Send to Kindle：** `PDF`、`DOC`、`DOCX`、`TXT`、`RTF`、`HTM`、`HTML`、`PNG`、`GIF`、`JPG`、`JPEG`、`BMP`、`EPUB`，单个文件不超过 200 MB
 
+![Amazon Send to Kindle 文件上传页面](./docs/images/send-to-kindle-upload.png)
+
 电脑端点击文件可复制完整路径；点击“复制并打开 Send to Kindle”会复制路径并打开 [Amazon Send to Kindle](https://www.amazon.com/sendtokindle)。受浏览器安全限制，仍需在上传窗口中手动选择文件。
 
 ## 主要功能

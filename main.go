@@ -1032,10 +1032,14 @@ const indexTemplate = `<!doctype html>
     .brand-header { display: flex; align-items: center; margin: 0 0 22px; padding-bottom: 16px; border-bottom: 1px solid #dfe2e9; }
     .brand-mark { display: block; width: 52px; height: 52px; margin-right: 13px; color: #3446b7; }
     .brand-mark svg { display: block; width: 100%; height: 100%; }
-    .brand-copy { display: block; }
+    .brand-copy { display: block; min-width: 0; }
     .brand-name { display: block; color: #172039; font-size: 27px; font-weight: 760; letter-spacing: -.03em; }
     .brand-tagline { display: block; margin-top: 3px; color: #70778a; font-size: 13px; font-weight: 600; letter-spacing: .12em; }
-    .language-switch { display: flex; flex: none; margin-left: auto; padding: 3px; border: 1px solid #d6dae4; border-radius: 5px; background: #fff; }
+    .header-actions { display: flex; flex: none; align-items: center; gap: 9px; margin-left: auto; }
+    .github-link { display: inline-flex; align-items: center; gap: 7px; padding: 9px 12px; border: 1px solid #172039; border-radius: 5px; background: #172039; color: #fff; font-size: 14px; font-weight: 700; line-height: 1; text-decoration: none; white-space: nowrap; }
+    .github-link:hover, .github-link:focus { border-color: #3446b7; background: #3446b7; outline: none; }
+    .github-link svg { width: 18px; height: 18px; fill: currentColor; }
+    .language-switch { display: flex; flex: none; padding: 3px; border: 1px solid #d6dae4; border-radius: 5px; background: #fff; }
     .language-button { margin: 0; padding: 6px 10px; border: 0; border-radius: 3px; background: transparent; color: #70778a; font-size: 13px; font-weight: 700; }
     .language-button.active { background: #3446b7; color: #fff; }
     .sort-toggle { flex: none; margin: 0 0 8px auto; padding: 8px 13px; border-color: #cbd0dc; border-radius: 5px; background: #fff; color: #3446b7; font-size: 14px; font-weight: bold; white-space: nowrap; }
@@ -1113,6 +1117,9 @@ const indexTemplate = `<!doctype html>
       .brand-mark { width: 45px; height: 45px; margin-right: 10px; }
       .brand-name { font-size: 23px; }
       .brand-tagline { font-size: 12px; }
+      .header-actions { gap: 6px; }
+      .github-link { gap: 5px; padding: 8px 9px; font-size: 13px; }
+      .github-link svg { width: 16px; height: 16px; }
       .language-button { padding: 6px 8px; }
       h1 { font-size: 25px; }
       .admin { padding: 15px; border-radius: 4px; }
@@ -1147,9 +1154,12 @@ const indexTemplate = `<!doctype html>
     <header class="brand-header">
       <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5.5 10.5c7.2-.9 14 1.1 20.5 6v27c-6.5-4.9-13.3-6.9-20.5-6V10.5Z" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M46.5 10.5c-7.2-.9-14 1.1-20.5 6v27c6.5-4.9 13.3-6.9 20.5-6V10.5Z" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M16 27h19m-5-5 5 5-5 5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
       <span class="brand-copy"><strong class="brand-name" data-i18n="brandName">方序传书</strong><span class="brand-tagline" data-i18n="tagline">方寸之间，自有书序</span></span>
-      <div class="language-switch" role="group" aria-label="语言 / Language">
-        <button class="language-button" type="button" data-language-button="zh" onclick="setLanguage('zh')">中文</button>
-        <button class="language-button" type="button" data-language-button="en" onclick="setLanguage('en')">EN</button>
+      <div class="header-actions">
+        <a class="github-link" href="https://github.com/goldenwind/kindle-transfer" target="_blank" rel="noopener noreferrer" aria-label="GitHub 开源项目"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .7a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2.23c-3.22.7-3.9-1.37-3.9-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.17.08 1.78 1.2 1.78 1.2 1.04 1.78 2.72 1.27 3.38.97.1-.75.4-1.27.74-1.56-2.57-.29-5.27-1.29-5.27-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.16 1.18a10.9 10.9 0 0 1 5.76 0c2.2-1.49 3.16-1.18 3.16-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.4-2.7 5.38-5.28 5.67.42.36.79 1.06.79 2.14v3.18c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .7Z"/></svg><span data-i18n="githubProject">GitHub 开源</span></a>
+        <div class="language-switch" role="group" aria-label="语言 / Language">
+          <button class="language-button" type="button" data-language-button="zh" onclick="setLanguage('zh')">中文</button>
+          <button class="language-button" type="button" data-language-button="en" onclick="setLanguage('en')">EN</button>
+        </div>
       </div>
     </header>
     {{if .Admin}}
@@ -1266,7 +1276,7 @@ const indexTemplate = `<!doctype html>
   <script>
     var translations = {
       zh: {
-        pageTitle: '方序传书', brandName: '方序传书', tagline: '方寸之间，自有书序',
+        pageTitle: '方序传书', brandName: '方序传书', tagline: '方寸之间，自有书序', githubProject: 'GitHub 开源',
         desktopSettings: '电脑端传书设置', connectionReminder: '连接提醒：', connectionText: '让 Kindle 与电脑连接同一 Wi-Fi，然后在 Kindle 浏览器中打开以下任一地址。',
         serviceRunning: '服务运行中', stopService: '停止传书服务', currentNetwork: '当前网络', noAddress: '未发现局域网 IPv4 地址，请确认电脑已连接 Wi-Fi。',
         sharedDirectory: '共享电子书目录', chooseFolder: '选择文件夹...', applyPath: '应用输入的路径',
@@ -1283,7 +1293,7 @@ const indexTemplate = `<!doctype html>
         copiedPath: '已复制路径：{path}', copyFailed: '复制失败，请手动选择页面中的路径。'
       },
       en: {
-        pageTitle: 'Fangxu Kindle Transfer', brandName: 'Fangxu Transfer', tagline: 'BOOKS IN ORDER, WITHIN REACH',
+        pageTitle: 'Fangxu Kindle Transfer', brandName: 'Fangxu Transfer', tagline: 'BOOKS IN ORDER, WITHIN REACH', githubProject: 'GitHub',
         desktopSettings: 'Desktop transfer settings', connectionReminder: 'Connection: ', connectionText: 'Connect your Kindle and computer to the same Wi-Fi, then open any address below in the Kindle browser.',
         serviceRunning: 'Service running', stopService: 'Stop service', currentNetwork: 'Current network', noAddress: 'No local IPv4 address found. Make sure this computer is connected to Wi-Fi.',
         sharedDirectory: 'Shared ebook folder', chooseFolder: 'Choose folder...', applyPath: 'Use entered path',

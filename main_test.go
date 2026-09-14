@@ -632,7 +632,7 @@ func TestLocalControlPageShowsAddressesAndSettings(t *testing.T) {
 	handler.ServeHTTP(response, request)
 
 	body := response.Body.String()
-	for _, expected := range []string{"方序传书", "方寸之间，自有书序", "电脑端传书设置", "服务运行中", "当前网络", "方序书房 Wi-Fi", "address-list", "directory-row", "http://192.168.1.8:8080", "http://192.168.1.9:8080", "http://192.168.1.10:8080", "选择文件夹", "<svg", "#3446b7"} {
+	for _, expected := range []string{"方序传书", "方寸之间，自有书序", "GitHub 开源", "https://github.com/goldenwind/kindle-transfer", "电脑端传书设置", "服务运行中", "当前网络", "方序书房 Wi-Fi", "address-list", "directory-row", "http://192.168.1.8:8080", "http://192.168.1.9:8080", "http://192.168.1.10:8080", "选择文件夹", "<svg", "#3446b7"} {
 		if !strings.Contains(body, expected) {
 			t.Errorf("control page does not contain %q", expected)
 		}

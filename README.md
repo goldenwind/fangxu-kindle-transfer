@@ -14,6 +14,32 @@
 
 关键词：Kindle 传书、Kindle Transfer、Send to Kindle、Kindle 局域网传书、Kindle 浏览器下载、AZW3、MOBI、KFX、EPUB、PDF、macOS、Windows、Linux。
 
+## ☕ 支持与关注
+
+方序传书会一直保持免费、开源。如果它帮你省下了折腾传书工具的时间，或让闲置的 Kindle 再次回到手边，欢迎请作者喝杯咖啡。每一份支持，都会成为继续修复兼容性、打磨体验和维护项目的动力。
+
+不方便赞赏也没关系：给项目一个 Star、分享给仍在使用 Kindle 的朋友，或关注微信公众号「一灯 AI」，同样是在帮助这个小工具走得更远。感谢你的使用与认可。
+
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <strong>支付宝赞赏</strong><br><br>
+      <img src="https://cdn.ip21.cn/img/common/alipay-qrcode.jpg" width="180" alt="支付宝赞赏二维码"><br>
+      <sub>请作者喝杯咖啡</sub>
+    </td>
+    <td align="center" width="33%">
+      <strong>微信赞赏</strong><br><br>
+      <img src="https://cdn.ip21.cn/img/common/wechatpay-qrcode.jpg" width="180" alt="微信赞赏二维码"><br>
+      <sub>支持免费项目持续维护</sub>
+    </td>
+    <td align="center" width="33%">
+      <strong>关注「一灯 AI」</strong><br><br>
+      <img src="https://cdn.ip21.cn/img/common/wechat-pub.png" width="180" alt="一灯 AI 微信公众号二维码"><br>
+      <sub>获取 AI 工具、效率技巧与项目动态</sub>
+    </td>
+  </tr>
+</table>
+
 ## 核心特性
 
 - 无需账号或数据库，双击即可在本机启动

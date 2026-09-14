@@ -47,7 +47,7 @@ EPUB、PDF、DOCX、DOC、RTF、HTML/HTM、JPG/JPEG、PNG、GIF 和 BMP 不生�
 | 文件 | 系统 | 支持架构 |
 | --- | --- | --- |
 | `kindle-send-windows-amd64.exe` | Windows | x86-64（绝大多数 Windows 电脑） |
-| `Kindle传书-macOS.zip` | macOS 双击版 | Intel、Apple Silicon（M1/M2/M3/M4 等） |
+| `Fangxu-Kindle-Transfer-macOS.zip` | macOS 双击版 | Intel、Apple Silicon（M1/M2/M3/M4 等） |
 | `kindle-send-macos-universal` | macOS 命令行版 | Intel、Apple Silicon |
 
 ## 双击启动
@@ -90,7 +90,7 @@ EPUB、PDF、DOCX、DOC、RTF、HTML/HTM、JPG/JPEG、PNG、GIF 和 BMP 不生�
 
 ### macOS
 
-1. 解压 `Kindle传书-macOS.zip`。
+1. 解压 `Fangxu-Kindle-Transfer-macOS.zip`。
 2. 将 `Kindle传书.app` 移到任意位置并双击打开。
 3. 在自动打开的页面中点击“选择文件夹...”，选择电子书目录。
 4. 在 Kindle 浏览器中输入页面显示的地址。

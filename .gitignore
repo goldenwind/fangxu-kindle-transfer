@@ -1,4 +1,6 @@
 /kindle-send
 /dist/
+/fangxu-file-transfer/build/
+/fangxu-file-transfer/dist/
 .DS_Store
 *.log

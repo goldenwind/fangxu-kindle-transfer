@@ -16,7 +16,7 @@ A free, open-source, zero-setup Kindle transfer tool. Download ebooks through th
 
 ## Download
 
-Get the appropriate package from [GitHub Releases](https://github.com/goldenwind/kindle-transfer/releases):
+Get the appropriate package from [GitHub Releases](https://github.com/goldenwind/fangxu-kindle-transfer/releases):
 
 | System | File |
 | --- | --- |
@@ -50,7 +50,7 @@ On the desktop page, click a file to copy its full path. **Copy and open Send to
 ## Features
 
 - Recursive folder scanning with format filters and file counts
-- Newest-first sorting with an optional filename sort
+- Four sorting options in a dropdown: newest first (default), oldest first, name ascending, and name descending
 - Chinese and English interface with saved language preference
 - Random available port and single-instance behavior
 - Responsive layout for Kindle and desktop browsers

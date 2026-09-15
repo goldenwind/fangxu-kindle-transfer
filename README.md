@@ -12,11 +12,13 @@
 
 免费、开源、无需安装的 Kindle 传书工具。在同一 Wi-Fi 下，用 Kindle 内置浏览器直接下载电子书；其他格式可在电脑端快速打开 Amazon Send to Kindle 发送。
 
+如果需要在电脑与手机、平板之间传输任意文件，请查看[方序传文件](https://github.com/goldenwind/fangxu-file-transfer)：移动端无需安装 App，扫码即可上传、下载。文档包含适用场景、项目优势，以及数据线、AirDrop、Quick Share、LocalSend、网盘等传文件方法的选择建议。
+
 ![方序传书电脑端控制页](./docs/images/fangxu-kindle-transfer-desktop.png)
 
 ## 下载
 
-前往 [GitHub Releases](https://github.com/goldenwind/kindle-transfer/releases) 下载对应版本：
+前往 [GitHub Releases](https://github.com/goldenwind/fangxu-kindle-transfer/releases) 下载对应版本：
 
 | 系统         | 下载文件                             |
 | ------------ | ------------------------------------ |
@@ -50,7 +52,7 @@
 ## 主要功能
 
 - 自动扫描子目录，按格式筛选并显示文件数量
-- 默认按修改时间倒序，也可按文件名排序
+- 下拉选择四种排序：时间从新到旧（默认）、时间从旧到新、名称正序、名称倒序
 - 中文、英文界面，自动记住语言选择
 - 随机空闲端口、单实例运行
 - 适配 Kindle 小屏与电脑浏览器

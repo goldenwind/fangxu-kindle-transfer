@@ -7,7 +7,7 @@
     <key>CFBundleExecutable</key>
     <string>Kindle传书</string>
     <key>CFBundleIdentifier</key>
-    <string>local.kindle-transfer.app</string>
+    <string>local.fangxu-kindle-transfer.app</string>
     <key>CFBundleName</key>
     <string>方序传书</string>
     <key>CFBundlePackageType</key>

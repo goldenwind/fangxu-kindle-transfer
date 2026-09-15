@@ -131,7 +131,7 @@ func serviceStatePath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	directory := filepath.Join(cacheDirectory, "kindle-transfer")
+	directory := filepath.Join(cacheDirectory, "fangxu-kindle-transfer")
 	if err := os.MkdirAll(directory, 0o700); err != nil {
 		return "", err
 	}
@@ -481,6 +481,13 @@ func (a *app) serveHealth(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+const stoppedHTML = `<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>服务已停止 · 方序传书</title><style>
+*{box-sizing:border-box}body{display:grid;min-height:100vh;margin:0;padding:24px;place-items:center;background:#f3f4f7;color:#172039;font:15px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif}.card{width:min(100%,720px);padding:38px 44px;border:1px solid #dfe2e9;border-radius:8px;background:#fff;box-shadow:0 8px 28px rgba(23,32,57,.07);overflow-x:auto;text-align:center}.brand{display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:26px}.logo{display:block;width:104px;height:104px;object-fit:contain}.logo{color:#3446b7}.logo svg{display:block;width:100%;height:100%}.brand-copy{text-align:left}.product{display:block;font-size:29px;font-weight:780;letter-spacing:-.03em;white-space:nowrap}.tagline{display:block;margin-top:3px;color:#70778a;font-size:13px;font-weight:600;letter-spacing:.12em;white-space:nowrap}.content{padding-top:22px;border-top:1px solid #e7e9ee}.state{display:inline-flex;align-items:center;gap:7px;margin-bottom:12px;color:#2c7250;font-size:13px;font-weight:700;white-space:nowrap}.dot{width:7px;height:7px;border-radius:50%;background:#319364}h1{margin:0 0 10px;font-size:25px;letter-spacing:-.02em;white-space:nowrap}p{margin:0;color:#70778a;white-space:nowrap}.hint{margin-top:18px;padding-top:16px;border-top:1px solid #e7e9ee;font-size:13px}
+@media(max-width:600px){body{padding:16px}.card{padding:28px 20px}.brand{gap:14px}.logo{width:72px;height:72px}.product{font-size:25px}h1{font-size:22px}h1,p{white-space:normal}.tagline{letter-spacing:.06em}}
+</style></head><body><main class="card"><div class="brand"><span class="logo" aria-hidden="true"><svg viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5.5 10.5c7.2-.9 14 1.1 20.5 6v27c-6.5-4.9-13.3-6.9-20.5-6V10.5Z" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M46.5 10.5c-7.2-.9-14 1.1-20.5 6v27c6.5-4.9 13.3-6.9 20.5-6V10.5Z" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M16 27h19m-5-5 5 5-5 5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="brand-copy"><span class="product">方序传书</span><span class="tagline">方寸之间，自有书序</span></span></div><div class="content"><div class="state"><span class="dot"></span>已安全停止</div><h1>传书服务已完全关闭</h1><p>电脑上的电子书已停止共享，其他设备无法再通过原地址访问。</p><p class="hint">你可以放心关闭此页面。下次需要传书时，再次双击“方序传书”即可。</p></div></main></body></html>`
+
 func (a *app) serveStop(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost || !isLoopbackRequest(r) || subtle.ConstantTimeCompare([]byte(r.FormValue("token")), []byte(a.csrfToken)) != 1 {
 		http.Error(w, "Forbidden", http.StatusForbidden)
@@ -488,7 +495,7 @@ func (a *app) serveStop(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
-	_, _ = fmt.Fprint(w, `<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>服务已停止</title><body style="margin:0;padding:32px;color:#141933;background:#edf2ff;font-family:-apple-system,BlinkMacSystemFont,&quot;Segoe UI&quot;,&quot;PingFang SC&quot;,&quot;Microsoft YaHei&quot;,sans-serif"><h1>方序传书服务已停止</h1><p>现在可以关闭此页面。</p></body></html>`)
+	_, _ = fmt.Fprint(w, stoppedHTML)
 	if flusher, ok := w.(http.Flusher); ok {
 		flusher.Flush()
 	}
@@ -990,24 +997,122 @@ func valueAfterColon(text string) string {
 	return strings.TrimSpace(parts[1])
 }
 
+// lanAddressScore excludes addresses that cannot normally serve peers on a LAN.
+// Higher scores prefer private addresses on the default route, then Wi-Fi/Ethernet.
+func lanAddressScore(iface net.Interface, ip net.IP, network *net.IPNet, preferred net.IP) (int, bool) {
+	if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 || iface.Flags&net.FlagPointToPoint != 0 {
+		return 0, false
+	}
+	name := strings.ToLower(iface.Name)
+	for _, prefix := range []string{"utun", "tun", "tap", "ppp", "ipsec", "wg", "tailscale", "zt", "docker", "veth", "virbr", "vmnet", "vbox", "br-", "bridge", "awdl", "llw", "anpi", "p2p", "ham", "vethernet"} {
+		if strings.HasPrefix(name, prefix) {
+			return 0, false
+		}
+	}
+	for _, marker := range []string{"vpn", "virtual", "vmware", "virtualbox", "hyper-v", "wsl", "loopback", "bluetooth"} {
+		if strings.Contains(name, marker) {
+			return 0, false
+		}
+	}
+	v4 := ip.To4()
+	if v4 == nil || !ip.IsGlobalUnicast() || ip.IsLinkLocalUnicast() || v4[0] == 0 || v4[0] >= 224 {
+		return 0, false
+	}
+	// Shared carrier, documentation and benchmark ranges are commonly assigned
+	// by VPNs or test networks rather than a device-accessible LAN.
+	for _, cidr := range []string{"100.64.0.0/10", "192.0.0.0/24", "192.0.2.0/24", "198.18.0.0/15", "198.51.100.0/24", "203.0.113.0/24"} {
+		_, blocked, _ := net.ParseCIDR(cidr)
+		if blocked.Contains(ip) {
+			return 0, false
+		}
+	}
+	if network != nil {
+		ones, bits := network.Mask.Size()
+		if bits == 32 && ones < 31 {
+			networkIP := v4.Mask(network.Mask)
+			broadcast := append(net.IP(nil), networkIP...)
+			for i := range broadcast {
+				broadcast[i] |= ^network.Mask[i]
+			}
+			if v4.Equal(networkIP) || v4.Equal(broadcast) {
+				return 0, false
+			}
+		}
+	}
+	score := 0
+	if ip.IsPrivate() {
+		score += 400
+	}
+	if ip.Equal(preferred) {
+		score += 200
+	}
+	switch {
+	case strings.HasPrefix(name, "wl"), strings.HasPrefix(name, "wifi"), strings.HasPrefix(name, "wi-fi"), strings.HasPrefix(name, "wlan"):
+		score += 120
+	case strings.HasPrefix(name, "en"), strings.HasPrefix(name, "eth"), strings.HasPrefix(name, "ethernet"):
+		score += 100
+	}
+	return score, true
+}
+
+// Connecting UDP selects a local source using the OS routing table without
+// sending a packet; offline hosts simply fall back to interface-based ranking.
+func defaultRouteIP() net.IP {
+	conn, err := net.DialTimeout("udp4", "1.1.1.1:53", 200*time.Millisecond)
+	if err != nil {
+		return nil
+	}
+	defer conn.Close()
+	if address, ok := conn.LocalAddr().(*net.UDPAddr); ok {
+		return address.IP
+	}
+	return nil
+}
+
 func localNetworkURLs(address net.Addr) []string {
 	_, port, err := net.SplitHostPort(address.String())
 	if err != nil {
 		return nil
 	}
-	interfaces, err := net.InterfaceAddrs()
+	interfaces, err := net.Interfaces()
 	if err != nil {
 		return nil
 	}
-	var urls []string
-	for _, item := range interfaces {
-		ip, _, err := net.ParseCIDR(item.String())
-		if err != nil || ip.IsLoopback() || ip.To4() == nil {
+	type candidate struct {
+		ip    net.IP
+		score int
+	}
+	var candidates []candidate
+	seen := make(map[string]bool)
+	preferred := defaultRouteIP()
+	for _, iface := range interfaces {
+		addresses, err := iface.Addrs()
+		if err != nil {
 			continue
 		}
-		urls = append(urls, "http://"+net.JoinHostPort(ip.String(), port))
+		for _, item := range addresses {
+			ip, network, err := net.ParseCIDR(item.String())
+			if err != nil {
+				continue
+			}
+			score, usable := lanAddressScore(iface, ip, network, preferred)
+			if !usable || seen[ip.String()] {
+				continue
+			}
+			seen[ip.String()] = true
+			candidates = append(candidates, candidate{ip: ip, score: score})
+		}
 	}
-	sort.Strings(urls)
+	sort.Slice(candidates, func(i, j int) bool {
+		if candidates[i].score != candidates[j].score {
+			return candidates[i].score > candidates[j].score
+		}
+		return bytes.Compare(candidates[i].ip.To4(), candidates[j].ip.To4()) < 0
+	})
+	urls := make([]string, 0, len(candidates))
+	for _, candidate := range candidates {
+		urls = append(urls, "http://"+net.JoinHostPort(candidate.ip.String(), port))
+	}
 	return urls
 }
 
@@ -1042,7 +1147,7 @@ const indexTemplate = `<!doctype html>
     .language-switch { display: flex; flex: none; padding: 3px; border: 1px solid #d6dae4; border-radius: 5px; background: #fff; }
     .language-button { margin: 0; padding: 6px 10px; border: 0; border-radius: 3px; background: transparent; color: #70778a; font-size: 13px; font-weight: 700; }
     .language-button.active { background: #3446b7; color: #fff; }
-    .sort-toggle { flex: none; margin: 0 0 8px auto; padding: 8px 13px; border-color: #cbd0dc; border-radius: 5px; background: #fff; color: #3446b7; font-size: 14px; font-weight: bold; white-space: nowrap; }
+    .sort-select { flex: none; margin: 0 0 8px auto; padding: 8px 13px; border-color: #cbd0dc; border-radius: 5px; background: #fff; color: #3446b7; font-size: 14px; font-weight: bold; white-space: nowrap; }
     .summary { margin: 0 0 18px; color: #70778a; }
     .admin { margin: 0 0 26px; padding: 20px; border: 1px solid #dfe2e9; border-radius: 6px; background: #fff; box-shadow: 0 4px 14px rgba(23,32,57,.04); }
     .admin-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
@@ -1133,7 +1238,7 @@ const indexTemplate = `<!doctype html>
       .directory-actions button { flex: 1; min-width: 0; padding: 10px 7px; font-size: 14px; }
       .filter-toolbar { flex-wrap: wrap; gap: 0; }
       .format-filters { flex-basis: 100%; margin-bottom: 0; }
-      .sort-toggle { margin-left: auto; padding: 8px 11px; font-size: 13px; }
+      .sort-select { margin-left: auto; padding: 8px 11px; font-size: 13px; }
       .tab { padding: 11px 4px; font-size: 14px; }
       .tab-note { padding: 10px; }
       .upload-guide { padding: 10px; }
@@ -1155,7 +1260,7 @@ const indexTemplate = `<!doctype html>
       <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5.5 10.5c7.2-.9 14 1.1 20.5 6v27c-6.5-4.9-13.3-6.9-20.5-6V10.5Z" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M46.5 10.5c-7.2-.9-14 1.1-20.5 6v27c6.5-4.9 13.3-6.9 20.5-6V10.5Z" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M16 27h19m-5-5 5 5-5 5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
       <span class="brand-copy"><strong class="brand-name" data-i18n="brandName">方序传书</strong><span class="brand-tagline" data-i18n="tagline">方寸之间，自有书序</span></span>
       <div class="header-actions">
-        <a class="github-link" href="https://github.com/goldenwind/kindle-transfer" target="_blank" rel="noopener noreferrer" aria-label="GitHub 开源项目"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .7a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2.23c-3.22.7-3.9-1.37-3.9-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.17.08 1.78 1.2 1.78 1.2 1.04 1.78 2.72 1.27 3.38.97.1-.75.4-1.27.74-1.56-2.57-.29-5.27-1.29-5.27-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.16 1.18a10.9 10.9 0 0 1 5.76 0c2.2-1.49 3.16-1.18 3.16-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.4-2.7 5.38-5.28 5.67.42.36.79 1.06.79 2.14v3.18c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .7Z"/></svg><span data-i18n="githubProject">GitHub 开源</span></a>
+        <a class="github-link" href="https://github.com/goldenwind/fangxu-kindle-transfer" target="_blank" rel="noopener noreferrer" aria-label="GitHub 开源项目"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .7a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2.23c-3.22.7-3.9-1.37-3.9-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.17.08 1.78 1.2 1.78 1.2 1.04 1.78 2.72 1.27 3.38.97.1-.75.4-1.27.74-1.56-2.57-.29-5.27-1.29-5.27-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.16 1.18a10.9 10.9 0 0 1 5.76 0c2.2-1.49 3.16-1.18 3.16-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.4-2.7 5.38-5.28 5.67.42.36.79 1.06.79 2.14v3.18c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .7Z"/></svg><span data-i18n="githubProject">GitHub 开源</span></a>
         <div class="language-switch" role="group" aria-label="语言 / Language">
           <button class="language-button" type="button" data-language-button="zh" onclick="setLanguage('zh')">中文</button>
           <button class="language-button" type="button" data-language-button="en" onclick="setLanguage('en')">EN</button>
@@ -1228,7 +1333,12 @@ const indexTemplate = `<!doctype html>
           <button class="format-filter active" type="button" data-filter-button onclick="filterBooks('direct', '', this)" data-i18n="allCount" data-count="{{len .DirectBooks}}">全部（{{len .DirectBooks}}）</button>
           {{range .DirectFilters}}<button class="format-filter" type="button" data-filter-button onclick="filterBooks('direct', '{{.Name}}', this)">{{.Name}}（{{.Count}}）</button>{{end}}
         </div>
-        <button class="sort-toggle" type="button" onclick="toggleSort()" data-i18n="sortByName">按文件名排序</button>
+        <select class="sort-select" aria-label="当前排序方式" onchange="changeSort(this.value)">
+          <option value="time-desc" data-i18n="sortTimeDesc" selected>时间：从新到旧</option>
+          <option value="time-asc" data-i18n="sortTimeAsc">时间：从旧到新</option>
+          <option value="name-asc" data-i18n="sortNameAsc">名称：正序</option>
+          <option value="name-desc" data-i18n="sortNameDesc">名称：倒序</option>
+        </select>
       </div>
       <div id="direct-filter-empty" class="empty" hidden data-i18n="noFormatBooks">没有这种格式的电子书。</div>
       <div id="direct-list">
@@ -1254,7 +1364,12 @@ const indexTemplate = `<!doctype html>
           <button class="format-filter active" type="button" data-filter-button onclick="filterBooks('send', '', this)" data-i18n="allCount" data-count="{{len .SendBooks}}">全部（{{len .SendBooks}}）</button>
           {{range .SendFilters}}<button class="format-filter" type="button" data-filter-button onclick="filterBooks('send', '{{.Name}}', this)">{{.Name}}（{{.Count}}）</button>{{end}}
         </div>
-        <button class="sort-toggle" type="button" onclick="toggleSort()" data-i18n="sortByName">按文件名排序</button>
+        <select class="sort-select" aria-label="当前排序方式" onchange="changeSort(this.value)">
+          <option value="time-desc" data-i18n="sortTimeDesc" selected>时间：从新到旧</option>
+          <option value="time-asc" data-i18n="sortTimeAsc">时间：从旧到新</option>
+          <option value="name-asc" data-i18n="sortNameAsc">名称：正序</option>
+          <option value="name-desc" data-i18n="sortNameDesc">名称：倒序</option>
+        </select>
       </div>
       <div id="send-filter-empty" class="empty" hidden data-i18n="noFormatBooks">没有这种格式的电子书。</div>
       <div id="send-list">
@@ -1285,7 +1400,7 @@ const indexTemplate = `<!doctype html>
         followYideng: '关注「一灯 AI」', followYidengNote: '微信扫码关注公众号，获取 AI 工具与效率实践。',
         myLibrary: '我的书架', bookSummary: '共收录 {count} 本电子书，默认按最近更新排列。', directTab: 'Kindle 内置浏览器下载（{count}）', sendTab: '电脑浏览器 Send to Kindle 云端传书（{count}）',
         directNote: '在 Kindle 体验版浏览器中，轻点书名即可下载。支持 AZW3、MOBI、TXT、AZW、KFX 和 PRC。', transferReminder: '传书提醒：', transferReminderText: '其他格式无法直接下载，请在电脑端打开本页面，通过电脑浏览器 Send to Kindle 云端传书。',
-        allCount: '全部（{count}）', sortByName: '按文件名排序', sortByTime: '按时间排序', noFormatBooks: '没有这种格式的电子书。', noDirectBooks: '没有可通过 Kindle 浏览器直接下载的电子书。',
+        allCount: '全部（{count}）', sortTimeDesc: '时间：从新到旧', sortTimeAsc: '时间：从旧到新', sortNameAsc: '名称：正序', sortNameDesc: '名称：倒序', sortLabel: '当前排序方式', noFormatBooks: '没有这种格式的电子书。', noDirectBooks: '没有可通过 Kindle 浏览器直接下载的电子书。',
         sendNote: 'Send to Kindle 仅支持 PDF、DOC、DOCX、TXT、RTF、HTM、HTML、PNG、GIF、JPG、JPEG、BMP 和 EPUB，单个文件最大 200 MB。', fileLimit: '文件限制：', fileLimitText: '本页只列出符合格式及大小限制的文件。',
         sendActionNote: '点击书籍可复制完整路径；点击“复制并打开Send to Kindle”可复制路径并前往上传页面。', uploadGuideTitle: '选择文件时，快速使用刚复制的完整路径',
         windowsGuide: 'Windows：在文件选择窗口的“文件名”输入框按 Ctrl + V 粘贴路径，再点击“打开”。', macGuide: 'macOS：在文件选择窗口按 Command + Shift + G，粘贴路径后按 Return，再点击“打开”。', linuxGuide: 'Linux：在文件选择窗口按 Ctrl + L，粘贴路径后按 Enter，再点击“打开”。',
@@ -1302,7 +1417,7 @@ const indexTemplate = `<!doctype html>
         followYideng: 'Follow Yideng AI', followYidengNote: 'Scan in WeChat for AI tools and productivity tips.',
         myLibrary: 'My library', bookSummary: '{count} ebooks found, newest files first.', directTab: 'Kindle browser download ({count})', sendTab: 'Desktop Send to Kindle cloud transfer ({count})',
         directNote: 'Tap a book title in the Kindle browser to download it. Supported formats: AZW3, MOBI, TXT, AZW, KFX, and PRC.', transferReminder: 'Transfer tip: ', transferReminderText: 'Other formats cannot be downloaded directly. Open this page on your computer and use Send to Kindle cloud transfer.',
-        allCount: 'All ({count})', sortByName: 'Sort by filename', sortByTime: 'Sort by time', noFormatBooks: 'No ebooks in this format.', noDirectBooks: 'No ebooks available for direct Kindle browser download.',
+        allCount: 'All ({count})', sortTimeDesc: 'Time: newest first', sortTimeAsc: 'Time: oldest first', sortNameAsc: 'Name: ascending', sortNameDesc: 'Name: descending', sortLabel: 'Current sort order', noFormatBooks: 'No ebooks in this format.', noDirectBooks: 'No ebooks available for direct Kindle browser download.',
         sendNote: 'Send to Kindle supports PDF, DOC, DOCX, TXT, RTF, HTM, HTML, PNG, GIF, JPG, JPEG, BMP, and EPUB, with a maximum file size of 200 MB.', fileLimit: 'File limits: ', fileLimitText: 'Only files that meet the format and size limits are listed here.',
         sendActionNote: 'Click a book to copy its full path. Use “Copy & open Send to Kindle” to copy the path and open the upload page.', uploadGuideTitle: 'Quickly select a file using the copied full path',
         windowsGuide: 'Windows: paste the path with Ctrl + V into the File name field, then click Open.', macGuide: 'macOS: press Command + Shift + G, paste the path, press Return, then click Open.', linuxGuide: 'Linux: press Ctrl + L in the file picker, paste the path, press Enter, then click Open.',
@@ -1311,7 +1426,7 @@ const indexTemplate = `<!doctype html>
       }
     };
     var currentLanguage = 'zh';
-    var sortMode = 'time';
+    var sortMode = 'time-desc';
     function message(key, values) {
       var text = translations[currentLanguage][key] || translations.zh[key] || key;
       values = values || {};
@@ -1329,7 +1444,7 @@ const indexTemplate = `<!doctype html>
       for (var buttonIndex = 0; buttonIndex < languageButtons.length; buttonIndex++) {
         languageButtons[buttonIndex].className = languageButtons[buttonIndex].getAttribute('data-language-button') === currentLanguage ? 'language-button active' : 'language-button';
       }
-      updateSortButtons();
+      updateSortSelects();
       try { window.localStorage.setItem('fangxu-language', currentLanguage); } catch (_) {}
     }
     function initialLanguage() {
@@ -1340,28 +1455,29 @@ const indexTemplate = `<!doctype html>
       var browserLanguage = navigator.language || navigator.userLanguage || 'zh';
       return browserLanguage.toLowerCase().indexOf('zh') === 0 ? 'zh' : 'en';
     }
-    function updateSortButtons() {
-      var sortButtons = document.querySelectorAll('.sort-toggle');
-      for (var index = 0; index < sortButtons.length; index++) {
-        sortButtons[index].textContent = message(sortMode === 'time' ? 'sortByName' : 'sortByTime');
+    function updateSortSelects() {
+      var selects = document.querySelectorAll('.sort-select');
+      for (var index = 0; index < selects.length; index++) {
+        selects[index].value = sortMode;
+        selects[index].setAttribute('aria-label', message('sortLabel'));
       }
     }
-    function toggleSort() {
-      sortMode = sortMode === 'time' ? 'name' : 'time';
+    function changeSort(mode) {
+      sortMode = mode;
       sortBookList('direct-list');
       sortBookList('send-list');
-      updateSortButtons();
+      updateSortSelects();
     }
     function sortBookList(listID) {
       var list = document.getElementById(listID);
       if (!list) return;
       var books = Array.prototype.slice.call(list.querySelectorAll('[data-book]'));
       books.sort(function (left, right) {
-        var leftName = left.getAttribute('data-name').toLowerCase();
-        var rightName = right.getAttribute('data-name').toLowerCase();
-        if (sortMode === 'name') return leftName.localeCompare(rightName);
-        var timeDifference = Number(right.getAttribute('data-time')) - Number(left.getAttribute('data-time'));
-        return timeDifference || leftName.localeCompare(rightName);
+        var nameDifference = left.getAttribute('data-name').localeCompare(right.getAttribute('data-name'), undefined, { numeric: true, sensitivity: 'base' });
+        if (sortMode === 'name-asc') return nameDifference;
+        if (sortMode === 'name-desc') return -nameDifference;
+        var timeDifference = Number(left.getAttribute('data-time')) - Number(right.getAttribute('data-time'));
+        return (sortMode === 'time-asc' ? timeDifference : -timeDifference) || nameDifference;
       });
       books.forEach(function (item) { list.appendChild(item); });
     }

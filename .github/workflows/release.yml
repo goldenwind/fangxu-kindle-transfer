@@ -68,7 +68,7 @@ jobs:
       - run: go vet ./...
       - run: npm test
       - name: Build desktop installers
-        run: npm run desktop:build -- --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
+        run: npm run desktop:build -- --verbose --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
       - name: Package Windows portable client
         if: runner.os == 'Windows'
         run: npm run package:windows-portable

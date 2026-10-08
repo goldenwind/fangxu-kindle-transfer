@@ -115,6 +115,14 @@ jobs:
           merge-multiple: true
           run-id: ${{ inputs.artifacts_run_id || github.run_id }}
           github-token: ${{ github.token }}
+      - name: Normalize installer filenames for GitHub release assets
+        run: |
+          find installers -type f -print0 | while IFS= read -r -d '' file; do
+            name=$(basename "$file")
+            if [[ "$name" == 方序传书_* ]]; then
+              mv "$file" "$(dirname "$file")/fangxu-kindle-transfer_${name#方序传书_}"
+            fi
+          done
       - name: Generate SHA-256 checksums
         working-directory: installers
         run: |

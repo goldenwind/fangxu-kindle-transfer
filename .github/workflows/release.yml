@@ -9,6 +9,10 @@ on:
         description: 'Existing release tag (for example v1.2.0)'
         required: true
         type: string
+      artifacts_run_id:
+        description: 'Reuse desktop artifacts from this run instead of rebuilding (optional)'
+        required: false
+        type: string
 
 concurrency:
   group: desktop-release-${{ inputs.tag || github.ref_name }}
@@ -16,9 +20,11 @@ concurrency:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   build:
+    if: ${{ !inputs.artifacts_run_id }}
     strategy:
       fail-fast: false
       matrix:
@@ -85,18 +91,34 @@ jobs:
             src-tauri/target/${{ matrix.target }}/release/bundle/appimage/*.AppImage
   publish:
     needs: build
+    if: ${{ always() && (needs.build.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.artifacts_run_id != '')) }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: read
     steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - name: Verify reused artifacts match the release commit
+        if: inputs.artifacts_run_id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ inputs.artifacts_run_id }}
+        run: |
+          source_commit=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN_ID" --jq .head_sha)
+          test "$source_commit" = "$(git rev-parse HEAD)"
       - uses: actions/download-artifact@v4
         with:
           pattern: desktop-*
           path: installers
           merge-multiple: true
+          run-id: ${{ inputs.artifacts_run_id || github.run_id }}
+          github-token: ${{ github.token }}
       - name: Generate SHA-256 checksums
         working-directory: installers
-        run: find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum | sed 's#  .*/#  #' > SHA256SUMS.txt
+        run: |
+          find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum | sed 's#  .*/#  #' > SHA256SUMS.txt
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.tag || github.ref_name }}

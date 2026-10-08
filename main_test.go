@@ -332,6 +332,7 @@ func TestRemotePageHidesSendToKindleTab(t *testing.T) {
 	handler.ServeHTTP(response, request)
 
 	body := response.Body.String()
+	assertMarkersInOrder(t, body, []string{`</header>`, `class="important-notice format-warning"`, `请在电脑端打开软件首页「电子书传输」`, `class="shelf-header"`, `id="direct-panel"`})
 	for _, forbidden := range []string{`id="send-tab"`, `id="send-panel"`, `href="https://www.amazon.com/sendtokindle"`, "manual.pdf", `<section class="support"`, "alipay-qrcode.jpg", "wechat-pub.png"} {
 		if strings.Contains(body, forbidden) {
 			t.Fatalf("remote page exposes Send to Kindle content %q", forbidden)
@@ -456,7 +457,7 @@ func TestFormatFiltersAndSendToKindleExplanation(t *testing.T) {
 	if !strings.Contains(body, explanation) {
 		t.Fatalf("page does not contain the Send to Kindle format explanation")
 	}
-	directDownloadNotice := "其他格式无法直接下载，请在电脑端打开本页面，通过电脑浏览器 Send to Kindle 云端传书。"
+	directDownloadNotice := "EPUB、PDF 等格式无法在 Kindle 内置浏览器中直接下载。请在电脑端打开软件首页「电子书传输」，点击右侧的「打开 Send to Kindle」选择文件并发送。"
 	if !strings.Contains(body, directDownloadNotice) {
 		t.Fatal("page does not explain how to transfer formats unsupported by the Kindle browser")
 	}
@@ -465,9 +466,10 @@ func TestFormatFiltersAndSendToKindleExplanation(t *testing.T) {
 			t.Errorf("page does not emphasize reminder %q", reminder)
 		}
 	}
-	if count := strings.Count(body, `class="important-notice"`); count != 3 {
+	if count := strings.Count(body, `class="important-notice`); count != 3 {
 		t.Fatalf("important reminder count = %d, want 3", count)
 	}
+	assertMarkersInOrder(t, body, []string{`</header>`, `class="important-notice format-warning"`, directDownloadNotice, `class="shelf-header"`})
 	directFormatExplanation := "支持 AZW3、MOBI、TXT、AZW、KFX 和 PRC。"
 	if !strings.Contains(body, directFormatExplanation) {
 		t.Fatal("direct-download explanation does not match the format filter order")
@@ -633,7 +635,7 @@ func TestLocalControlPageShowsAddressesAndSettings(t *testing.T) {
 	handler.ServeHTTP(response, request)
 
 	body := response.Body.String()
-	for _, expected := range []string{"方序传书", "方寸之间，自有书序", "GitHub 开源", "https://github.com/goldenwind/fangxu-kindle-transfer", "电脑端传书设置", "服务运行中", "当前网络", "方序书房 Wi-Fi", "address-list", "directory-row", "http://192.168.1.8:8080", "http://192.168.1.9:8080", "http://192.168.1.10:8080", "选择文件夹", "<svg", "#3446b7"} {
+	for _, expected := range []string{"方序传书", "方寸之间，自有书序", "GitHub 开源", "https://github.com/goldenwind/fangxu-kindle-transfer", "电脑端传书设置", "服务运行中", "当前网络", "方序书房 Wi-Fi", "address-list", "directory-row", "http://192.168.1.8:8080", "http://192.168.1.9:8080", "http://192.168.1.10:8080", "选择文件夹", "<svg", "#d9efdc"} {
 		if !strings.Contains(body, expected) {
 			t.Errorf("control page does not contain %q", expected)
 		}

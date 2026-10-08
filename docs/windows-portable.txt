@@ -1,0 +1,30 @@
+方序传书 / Fangxu Kindle Transfer — Windows x64 免安装版 / Portable
+
+使用方法
+1. 将 ZIP 完整解压到电脑上的文件夹，不要直接在压缩包中运行。
+2. 双击 Fangxu-Kindle-Transfer.exe，客户端会自动启动传书服务。
+3. 请保留同目录中的 fangxu-kindle-service.exe 和其他文件，不要只移动主程序。
+4. 首次出现防火墙提示时，允许访问“专用网络”。关闭客户端即可停止服务。
+
+客户端无需安装，也无需 Go、Node.js 或 Rust。
+界面需要 Microsoft Edge WebView2 Runtime；Windows 11 和多数 Windows 10 已自带。
+如果系统缺少 WebView2，请先从微软官网下载并安装 Evergreen Runtime：
+https://developer.microsoft.com/microsoft-edge/webview2/
+
+设置保存在系统应用配置目录中，与安装版共享，不保存在解压目录。
+删除解压目录即可移除程序；已保存的设置仍会保留。
+
+Quick start
+1. Extract the entire ZIP to a local folder. Do not run the app inside the ZIP.
+2. Double-click Fangxu-Kindle-Transfer.exe. Sharing starts automatically.
+3. Keep fangxu-kindle-service.exe and all other files beside the main executable.
+4. Allow private-network access if Windows Firewall asks. Closing the client stops sharing.
+
+No application installation, Go, Node.js or Rust is required.
+The interface requires Microsoft Edge WebView2 Runtime, included with Windows 11
+and already present on most Windows 10 devices. If missing, install the Evergreen
+Runtime from the Microsoft URL above before launching the portable client.
+
+Settings are stored in the system application configuration directory and shared
+with the installed edition. Deleting the extracted app folder removes the app but
+keeps settings.

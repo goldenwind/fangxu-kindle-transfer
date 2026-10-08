@@ -4,3 +4,7 @@
 /fangxu-file-transfer/dist/
 .DS_Store
 *.log
+/node_modules/
+/src-tauri/target/
+/src-tauri/gen/
+/src-tauri/binaries/

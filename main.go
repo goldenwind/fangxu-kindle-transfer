@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/subtle"
+	_ "embed"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -26,6 +27,9 @@ import (
 	"time"
 	"unicode"
 )
+
+//go:embed docs/app-icon.svg
+var appIconSVG string
 
 var supportedExtensions = map[string]struct{}{
 	".azw": {}, ".azw3": {}, ".epub": {}, ".kfx": {}, ".mobi": {},
@@ -95,16 +99,17 @@ type pageData struct {
 }
 
 type app struct {
-	mu            sync.RWMutex
-	root          string
-	resolvedRoot  string
-	addresses     []string
-	networkName   string
-	csrfToken     string
-	instanceToken string
-	pickerMu      sync.Mutex
-	shutdown      func()
-	template      *template.Template
+	mu             sync.RWMutex
+	root           string
+	resolvedRoot   string
+	addresses      []string
+	networkName    string
+	csrfToken      string
+	instanceToken  string
+	pickerMu       sync.Mutex
+	shutdown       func()
+	desktopManaged bool
+	template       *template.Template
 }
 
 type serviceState struct {
@@ -278,7 +283,12 @@ func run() error {
 	listenAddress := flag.String("listen", defaultListenAddress, "监听地址，端口为 0 时自动选择空闲端口，例如 0.0.0.0:0")
 	bookDirectory := flag.String("dir", "", "电子书目录，默认为用户的下载目录")
 	noOpen := flag.Bool("no-open", false, "启动后不自动打开本机设置页面")
+	desktop := flag.Bool("desktop", false, "由桌面客户端通过标准输入输出管理服务")
+	configPath := flag.String("config", "", "桌面客户端设置文件路径")
 	flag.Parse()
+	if *desktop {
+		return runDesktop(os.Stdin, os.Stdout, *configPath)
+	}
 
 	statePath, err := serviceStatePath()
 	if err != nil {
@@ -481,14 +491,18 @@ func (a *app) serveHealth(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-const stoppedHTML = `<!doctype html>
+var stoppedHTML = `<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>服务已停止 · 方序传书</title><style>
-*{box-sizing:border-box}body{display:grid;min-height:100vh;margin:0;padding:24px;place-items:center;background:#f3f4f7;color:#172039;font:15px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif}.card{width:min(100%,720px);padding:38px 44px;border:1px solid #dfe2e9;border-radius:8px;background:#fff;box-shadow:0 8px 28px rgba(23,32,57,.07);overflow-x:auto;text-align:center}.brand{display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:26px}.logo{display:block;width:104px;height:104px;object-fit:contain}.logo{color:#3446b7}.logo svg{display:block;width:100%;height:100%}.brand-copy{text-align:left}.product{display:block;font-size:29px;font-weight:780;letter-spacing:-.03em;white-space:nowrap}.tagline{display:block;margin-top:3px;color:#70778a;font-size:13px;font-weight:600;letter-spacing:.12em;white-space:nowrap}.content{padding-top:22px;border-top:1px solid #e7e9ee}.state{display:inline-flex;align-items:center;gap:7px;margin-bottom:12px;color:#2c7250;font-size:13px;font-weight:700;white-space:nowrap}.dot{width:7px;height:7px;border-radius:50%;background:#319364}h1{margin:0 0 10px;font-size:25px;letter-spacing:-.02em;white-space:nowrap}p{margin:0;color:#70778a;white-space:nowrap}.hint{margin-top:18px;padding-top:16px;border-top:1px solid #e7e9ee;font-size:13px}
+*{box-sizing:border-box}body{display:grid;min-height:100vh;margin:0;padding:24px;place-items:center;background:#f4f8f4;color:#203b2b;font:15px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif}.card{width:min(100%,720px);padding:38px 44px;border:1px solid #dce7dd;border-radius:8px;background:#fff;box-shadow:0 8px 28px rgba(32,59,43,.07);overflow-x:auto;text-align:center}.brand{display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:26px}.logo{display:block;width:104px;height:104px;object-fit:contain}.logo{color:#38734a}.logo svg{display:block;width:100%;height:100%}.brand-copy{text-align:left}.product{display:block;font-size:29px;font-weight:780;letter-spacing:-.03em;white-space:nowrap}.tagline{display:block;margin-top:3px;color:#718174;font-size:13px;font-weight:600;letter-spacing:.12em;white-space:nowrap}.content{padding-top:22px;border-top:1px solid #e6eee7}.state{display:inline-flex;align-items:center;gap:7px;margin-bottom:12px;color:#2c7250;font-size:13px;font-weight:700;white-space:nowrap}.dot{width:7px;height:7px;border-radius:50%;background:#38734a}h1{margin:0 0 10px;font-size:25px;letter-spacing:-.02em;white-space:nowrap}p{margin:0;color:#718174;white-space:nowrap}.hint{margin-top:18px;padding-top:16px;border-top:1px solid #e6eee7;font-size:13px}
 @media(max-width:600px){body{padding:16px}.card{padding:28px 20px}.brand{gap:14px}.logo{width:72px;height:72px}.product{font-size:25px}h1{font-size:22px}h1,p{white-space:normal}.tagline{letter-spacing:.06em}}
-</style></head><body><main class="card"><div class="brand"><span class="logo" aria-hidden="true"><svg viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5.5 10.5c7.2-.9 14 1.1 20.5 6v27c-6.5-4.9-13.3-6.9-20.5-6V10.5Z" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M46.5 10.5c-7.2-.9-14 1.1-20.5 6v27c6.5-4.9 13.3-6.9 20.5-6V10.5Z" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M16 27h19m-5-5 5 5-5 5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="brand-copy"><span class="product">方序传书</span><span class="tagline">方寸之间，自有书序</span></span></div><div class="content"><div class="state"><span class="dot"></span>已安全停止</div><h1>传书服务已完全关闭</h1><p>电脑上的电子书已停止共享，其他设备无法再通过原地址访问。</p><p class="hint">你可以放心关闭此页面。下次需要传书时，再次双击“方序传书”即可。</p></div></main></body></html>`
+</style></head><body><main class="card"><div class="brand"><span class="logo" aria-hidden="true">` + appIconSVG + `</span><span class="brand-copy"><span class="product">方序传书</span><span class="tagline">方寸之间，自有书序</span></span></div><div class="content"><div class="state"><span class="dot"></span>已安全停止</div><h1>传书服务已完全关闭</h1><p>电脑上的电子书已停止共享，其他设备无法再通过原地址访问。</p><p class="hint">你可以放心关闭此页面。下次需要传书时，再次双击“方序传书”即可。</p></div></main></body></html>`
 
 func (a *app) serveStop(w http.ResponseWriter, r *http.Request) {
+	if a.desktopManaged {
+		http.Error(w, "请在桌面客户端停止服务", http.StatusForbidden)
+		return
+	}
 	if r.Method != http.MethodPost || !isLoopbackRequest(r) || subtle.ConstantTimeCompare([]byte(r.FormValue("token")), []byte(a.csrfToken)) != 1 {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
@@ -537,7 +551,7 @@ func (a *app) serveIndex(w http.ResponseWriter, r *http.Request) {
 		SendFilters:     buildFormatFilters(sendBooks, sendToKindleFormatOrder),
 		BookCount:       len(books),
 		Root:            root,
-		Admin:           isLoopbackRequest(r),
+		Admin:           isLoopbackRequest(r) && !a.desktopManaged,
 		Addresses:       a.pageAddresses(),
 		NetworkName:     a.pageNetworkName(),
 		CSRFToken:       a.csrfToken,
@@ -550,6 +564,10 @@ func (a *app) serveIndex(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *app) serveDirectorySettings(w http.ResponseWriter, r *http.Request) {
+	if a.desktopManaged {
+		http.Error(w, "请在桌面客户端修改设置", http.StatusForbidden)
+		return
+	}
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", "POST")
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -1116,7 +1134,7 @@ func localNetworkURLs(address net.Addr) []string {
 	return urls
 }
 
-const indexTemplate = `<!doctype html>
+var indexTemplate = `<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
@@ -1130,89 +1148,92 @@ const indexTemplate = `<!doctype html>
   <title>方序传书</title>
   <style>
     * { box-sizing: border-box; }
-    body { margin: 0; padding: 20px; color: #172039; background: #f3f4f7; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif; }
+    body { margin: 0; padding: 20px; color: #203b2b; background: #f4f8f4; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif; }
     .page { width: 100%; max-width: none; min-height: calc(100vh - 36px); margin: 0; }
-    h1 { margin: 6px 0; color: #172039; font-size: 30px; letter-spacing: -.02em; }
-    h2 { margin: 0 0 8px; color: #172039; font-size: 22px; }
-    .brand-header { display: flex; align-items: center; margin: 0 0 22px; padding-bottom: 16px; border-bottom: 1px solid #dfe2e9; }
-    .brand-mark { display: block; width: 52px; height: 52px; margin-right: 13px; color: #3446b7; }
+    h1 { margin: 6px 0; color: #203b2b; font-size: 30px; letter-spacing: -.02em; }
+    h2 { margin: 0 0 8px; color: #203b2b; font-size: 22px; }
+    .brand-header { display: flex; align-items: center; margin: 0 0 22px; padding-bottom: 16px; border-bottom: 1px solid #dce7dd; }
+    .brand-mark { display: block; width: 52px; height: 52px; margin-right: 13px; color: #38734a; }
     .brand-mark svg { display: block; width: 100%; height: 100%; }
     .brand-copy { display: block; min-width: 0; }
-    .brand-name { display: block; color: #172039; font-size: 27px; font-weight: 760; letter-spacing: -.03em; }
-    .brand-tagline { display: block; margin-top: 3px; color: #70778a; font-size: 13px; font-weight: 600; letter-spacing: .12em; }
+    .brand-name { display: block; color: #203b2b; font-size: 27px; font-weight: 760; letter-spacing: -.03em; }
+    .brand-tagline { display: block; margin-top: 3px; color: #718174; font-size: 13px; font-weight: 600; letter-spacing: .12em; }
     .header-actions { display: flex; flex: none; align-items: center; gap: 9px; margin-left: auto; }
-    .github-link { display: inline-flex; align-items: center; gap: 7px; padding: 9px 12px; border: 1px solid #172039; border-radius: 5px; background: #172039; color: #fff; font-size: 14px; font-weight: 700; line-height: 1; text-decoration: none; white-space: nowrap; }
-    .github-link:hover, .github-link:focus { border-color: #3446b7; background: #3446b7; outline: none; }
+    .github-link { display: inline-flex; align-items: center; gap: 7px; padding: 9px 12px; border: 1px solid #c4dfca; border-radius: 5px; background: #d9efdc; color: #38734a; font-size: 14px; font-weight: 700; line-height: 1; text-decoration: none; white-space: nowrap; }
+    .github-link:hover, .github-link:focus { border-color: #38734a; background: #d9efdc; outline: none; }
     .github-link svg { width: 18px; height: 18px; fill: currentColor; }
-    .language-switch { display: flex; flex: none; padding: 3px; border: 1px solid #d6dae4; border-radius: 5px; background: #fff; }
-    .language-button { margin: 0; padding: 6px 10px; border: 0; border-radius: 3px; background: transparent; color: #70778a; font-size: 13px; font-weight: 700; }
-    .language-button.active { background: #3446b7; color: #fff; }
-    .sort-select { flex: none; margin: 0 0 8px auto; padding: 8px 13px; border-color: #cbd0dc; border-radius: 5px; background: #fff; color: #3446b7; font-size: 14px; font-weight: bold; white-space: nowrap; }
-    .summary { margin: 0 0 18px; color: #70778a; }
-    .admin { margin: 0 0 26px; padding: 20px; border: 1px solid #dfe2e9; border-radius: 6px; background: #fff; box-shadow: 0 4px 14px rgba(23,32,57,.04); }
+    .language-switch { display: flex; flex: none; padding: 3px; border: 1px solid #dce7dd; border-radius: 5px; background: #fff; }
+    .language-button { margin: 0; padding: 6px 10px; border: 0; border-radius: 3px; background: transparent; color: #718174; font-size: 13px; font-weight: 700; }
+    .language-button.active { background: #d9efdc; color: #38734a; }
+    .sort-select { flex: none; margin: 0 0 8px auto; padding: 8px 13px; border-color: #c4d8c8; border-radius: 5px; background: #fff; color: #38734a; font-size: 14px; font-weight: bold; white-space: nowrap; }
+    .summary { margin: 0 0 18px; color: #718174; }
+    .admin { margin: 0 0 26px; padding: 20px; border: 1px solid #dce7dd; border-radius: 6px; background: #fff; box-shadow: 0 4px 14px rgba(32,59,43,.04); }
     .admin-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
     .admin-heading { flex: 1; min-width: 0; }
-    .admin-intro { margin: 0 0 12px; color: #70778a; line-height: 1.6; }
+    .admin-intro { margin: 0 0 12px; color: #718174; line-height: 1.6; }
     .service-actions { display: flex; flex: none; align-items: center; gap: 10px; }
     .service-actions form { margin: 0; }
     .service-status { display: inline-flex; align-items: center; color: #2c7250; font-size: 14px; font-weight: 700; white-space: nowrap; }
-    .service-status-dot { width: 7px; height: 7px; margin-right: 7px; border-radius: 50%; background: #319364; }
-    .network-info { display: flex; align-items: center; gap: 9px; margin: 2px 0 12px; padding: 9px 0; border-bottom: 1px solid #e7e9ee; }
-    .network-label { color: #70778a; font-size: 14px; }
+    .service-status-dot { width: 7px; height: 7px; margin-right: 7px; border-radius: 50%; background: #38734a; }
+    .network-info { display: flex; align-items: center; gap: 9px; margin: 2px 0 12px; padding: 9px 0; border-bottom: 1px solid #e6eee7; }
+    .network-label { color: #718174; font-size: 14px; }
     .network-name { color: #245f43; font-size: 15px; word-break: break-word; }
     .address-list { display: flex; flex-wrap: nowrap; gap: 8px; width: 100%; margin: 8px 0; overflow-x: auto; }
-    .address { display: block; flex: 1 0 210px; min-width: 0; margin: 0; padding: 11px 13px; border: 1px solid #dfe2e9; border-radius: 4px; background: #f7f8fb; color: #29345f; font-size: 17px; white-space: nowrap; }
+    .address { display: block; flex: 1 0 210px; min-width: 0; margin: 0; padding: 11px 13px; border: 1px solid #dce7dd; border-radius: 4px; background: #f5faf6; color: #38734a; font-size: 17px; white-space: nowrap; }
     .status { margin: 12px 0; padding: 11px 13px; border-left: 3px solid #b98525; background: #f8f5ec; color: #69551f; }
 	.notice { margin: 8px 0 0; color: #765815; line-height: 1.55; }
     label { display: block; margin: 14px 0 6px; font-weight: bold; }
-    input[type=text] { box-sizing: border-box; width: 100%; padding: 12px 13px; border: 1px solid #cbd0dc; border-radius: 4px; background: #fff; color: #172039; font-size: 16px; }
-    input[type=text]:focus { border-color: #3446b7; outline: 2px solid rgba(52,70,183,.1); }
+    input[type=text] { box-sizing: border-box; width: 100%; padding: 12px 13px; border: 1px solid #c4d8c8; border-radius: 4px; background: #fff; color: #203b2b; font-size: 16px; }
+    input[type=text]:focus { border-color: #38734a; outline: 2px solid rgba(56,115,74,.1); }
     .directory-row { display: flex; align-items: center; gap: 10px; }
     .directory-row input[type=text] { flex: 1; min-width: 260px; max-width: 560px; }
     .directory-actions { display: flex; flex: none; align-items: center; gap: 8px; }
     .directory-actions button, .service-actions button { margin: 0; white-space: nowrap; }
-    button { margin: 12px 8px 0 0; padding: 11px 16px; border: 1px solid #cbd0dc; border-radius: 5px; background: #fff; color: #172039; font-size: 16px; cursor: pointer; }
-    button:hover, button:focus { border-color: #3446b7; outline: none; }
-    .primary { border-color: #3446b7; background: #3446b7; color: #fff; }
+    button { margin: 12px 8px 0 0; padding: 11px 16px; border: 1px solid #c4d8c8; border-radius: 5px; background: #fff; color: #203b2b; font-size: 16px; cursor: pointer; }
+    button:hover, button:focus { border-color: #38734a; outline: none; }
+    .primary { border-color: #38734a; background: #d9efdc; color: #38734a; }
     .danger { border-color: #bb5656; color: #a83a3a; }
-    .tabs { display: flex; margin: 0 0 16px; border-bottom: 1px solid #d7dae2; }
-    .tab { flex: 1; margin: 0 0 -1px; padding: 12px 8px; border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: transparent; color: #70778a; font-weight: bold; }
-    .tab.active { border-bottom-color: #3446b7; background: transparent; color: #26358f; }
+    .tabs { display: flex; margin: 0 0 16px; border-bottom: 1px solid #dce7dd; }
+    .tab { flex: 1; margin: 0 0 -1px; padding: 12px 8px; border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: transparent; color: #718174; font-weight: bold; }
+    .tab.active { border-bottom-color: #38734a; background: transparent; color: #38734a; }
     .tab-panel[hidden] { display: none; }
-    .tab-note { margin: 0 0 14px; padding: 14px 16px; border-left: 3px solid #3446b7; background: #f8f9fc; color: #353d55; line-height: 1.65; }
+    .tab-note { margin: 0 0 14px; padding: 14px 16px; border-left: 3px solid #38734a; background: #f5faf6; color: #385640; line-height: 1.65; }
     .important-notice { position: relative; display: block; margin: 9px 0 0; padding: 8px 0 0 21px; border-top: 1px solid #ddd6c4; background: transparent; color: #6c5723; font-weight: 600; line-height: 1.55; }
     .important-notice:before { position: absolute; left: 1px; top: 9px; content: "!"; color: #9a6d16; font-weight: 800; }
     .admin-heading .important-notice { margin: 0 0 12px; padding-top: 0; border-top: 0; }
     .admin-heading .important-notice:before { top: 1px; }
+    .format-warning { margin: 0 0 20px; padding: 13px 16px 13px 34px; border: 1px solid #ecd29b; border-left: 4px solid #c58a22; border-radius: 5px; background: #fff8e6; color: #8a570b; }
+    .format-warning:before { top: 13px; left: 13px; color: #8a570b; }
+    .format-warning strong { display: block; margin-bottom: 4px; }
     .upload-guide { margin: 0 0 14px; padding: 13px 15px; border-left: 3px solid #4b8065; background: #f6f9f7; color: #2c4f3c; line-height: 1.65; }
     .upload-guide-title { display: block; margin-bottom: 4px; color: #235e40; }
     .upload-guide-platform { display: block; }
     .filter-toolbar { display: flex; align-items: flex-start; gap: 12px; }
     .format-filters { display: flex; flex: 1; flex-wrap: wrap; min-width: 0; margin: 0 0 8px; }
-    .format-filter { margin: 0 8px 8px 0; padding: 8px 13px; border: 1px solid #cbd0dc; border-radius: 5px; background: #fff; color: #3446b7; font-size: 14px; font-weight: bold; }
-    .format-filter.active { border-color: #3446b7; background: #3446b7; color: #fff; }
-    .book { display: block; box-sizing: border-box; width: 100%; margin: 0 0 9px; padding: 15px 17px; border: 1px solid #dfe2e9; border-radius: 5px; background: #fff; color: #172039; text-align: left; text-decoration: none; }
-	.book:hover, .book:focus { border-color: #9ea7ca; background: #fafbfe; box-shadow: 0 3px 10px rgba(23,32,57,.05); outline: none; }
+    .format-filter { margin: 0 8px 8px 0; padding: 8px 13px; border: 1px solid #c4d8c8; border-radius: 5px; background: #fff; color: #38734a; font-size: 14px; font-weight: bold; }
+    .format-filter.active { border-color: #38734a; background: #d9efdc; color: #38734a; }
+    .book { display: block; box-sizing: border-box; width: 100%; margin: 0 0 9px; padding: 15px 17px; border: 1px solid #dce7dd; border-radius: 5px; background: #fff; color: #203b2b; text-align: left; text-decoration: none; }
+	.book:hover, .book:focus { border-color: #a6c9ae; background: #f5faf6; box-shadow: 0 3px 10px rgba(32,59,43,.05); outline: none; }
 	.book-copy { display: flex; align-items: center; cursor: copy; }
-	.book-copy:hover, .book-copy:focus { border-color: #7e89bd; background: #fafbfe; }
+	.book-copy:hover, .book-copy:focus { border-color: #83b98f; background: #f5faf6; }
 	.book-details { flex: 1; min-width: 0; }
-	.send-link { display: block; flex: none; margin-left: 18px; padding: 10px 14px; border: 1px solid #3446b7; border-radius: 5px; background: #3446b7; color: #fff; font-size: 16px; font-weight: bold; text-align: center; text-decoration: none; white-space: nowrap; }
+	.send-link { display: block; flex: none; margin-left: 18px; padding: 10px 14px; border: 1px solid #38734a; border-radius: 5px; background: #d9efdc; color: #38734a; font-size: 16px; font-weight: bold; text-align: center; text-decoration: none; white-space: nowrap; }
     .title { display: block; font-size: 21px; font-weight: bold; line-height: 1.35; word-wrap: break-word; }
-    .meta { display: block; margin-top: 8px; color: #70778a; font-size: 14px; }
-    .copy-status { position: fixed; z-index: 1000; top: 20px; left: 50%; width: max-content; max-width: min(720px, calc(100vw - 32px)); padding: 13px 18px; border: 1px solid rgba(255,255,255,.22); border-radius: 5px; background: #172039; color: #fff; box-shadow: 0 12px 32px rgba(23,32,57,.28); line-height: 1.55; overflow-wrap: anywhere; transform: translateX(-50%); }
-    .empty { padding: 24px 16px; border: 1px dashed #c5cad5; border-radius: 5px; background: #f8f9fb; color: #70778a; line-height: 1.7; }
-    .support { margin: 0 0 26px; padding: 20px; border: 1px solid #dfe2e9; border-radius: 5px; background: #fff; }
+    .meta { display: block; margin-top: 8px; color: #718174; font-size: 14px; }
+    .copy-status { position: fixed; z-index: 1000; top: 20px; left: 50%; width: max-content; max-width: min(720px, calc(100vw - 32px)); padding: 13px 18px; border: 1px solid rgba(255,255,255,.22); border-radius: 5px; background: #203b2b; color: #fff; box-shadow: 0 12px 32px rgba(32,59,43,.28); line-height: 1.55; overflow-wrap: anywhere; transform: translateX(-50%); }
+    .empty { padding: 24px 16px; border: 1px dashed #c4d8c8; border-radius: 5px; background: #f5faf6; color: #718174; line-height: 1.7; }
+    .support { margin: 0 0 26px; padding: 20px; border: 1px solid #dce7dd; border-radius: 5px; background: #fff; }
     .support-heading { margin-bottom: 16px; }
     .support-heading h2 { margin-bottom: 6px; }
-    .support-heading p { width: 100%; margin: 0; color: #626a7d; line-height: 1.7; }
+    .support-heading p { width: 100%; margin: 0; color: #718174; line-height: 1.7; }
     .support-grid { display: flex; flex-wrap: wrap; gap: 12px; }
-    .support-card { display: flex; flex: 1 1 240px; align-items: center; min-width: 0; padding: 14px; border: 1px solid #dfe2e9; border-radius: 5px; background: #fff; }
-    .support-card img { display: block; flex: none; width: 116px; height: 116px; padding: 4px; border: 1px solid #e5e7ec; background: #fff; object-fit: contain; }
+    .support-card { display: flex; flex: 1 1 240px; align-items: center; min-width: 0; padding: 14px; border: 1px solid #dce7dd; border-radius: 5px; background: #fff; }
+    .support-card img { display: block; flex: none; width: 116px; height: 116px; padding: 4px; border: 1px solid #dce7dd; background: #fff; object-fit: contain; }
     .support-card-copy { min-width: 0; margin-left: 14px; }
-    .support-card-title { display: block; color: #172039; font-size: 17px; line-height: 1.4; }
-    .support-card-note { display: block; margin-top: 6px; color: #70778a; font-size: 13px; line-height: 1.55; }
-    .support-card-public { border-color: #cbd2eb; background: #fafbff; }
-    .footer { margin-top: 24px; padding: 14px 4px 4px; border-top: 1px solid #dfe2e9; color: #70778a; font-size: 12px; line-height: 1.7; word-wrap: break-word; }
+    .support-card-title { display: block; color: #203b2b; font-size: 17px; line-height: 1.4; }
+    .support-card-note { display: block; margin-top: 6px; color: #718174; font-size: 13px; line-height: 1.55; }
+    .support-card-public { border-color: #c4dfca; background: #f5faf6; }
+    .footer { margin-top: 24px; padding: 14px 4px 4px; border-top: 1px solid #dce7dd; color: #718174; font-size: 12px; line-height: 1.7; word-wrap: break-word; }
     .footer-root { display: block; }
     [hidden] { display: none !important; }
     @media (max-width: 600px) {
@@ -1257,7 +1278,7 @@ const indexTemplate = `<!doctype html>
 <body>
   <div class="page">
     <header class="brand-header">
-      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5.5 10.5c7.2-.9 14 1.1 20.5 6v27c-6.5-4.9-13.3-6.9-20.5-6V10.5Z" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M46.5 10.5c-7.2-.9-14 1.1-20.5 6v27c6.5-4.9 13.3-6.9 20.5-6V10.5Z" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M16 27h19m-5-5 5 5-5 5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="brand-mark" aria-hidden="true">` + appIconSVG + `</span>
       <span class="brand-copy"><strong class="brand-name" data-i18n="brandName">方序传书</strong><span class="brand-tagline" data-i18n="tagline">方寸之间，自有书序</span></span>
       <div class="header-actions">
         <a class="github-link" href="https://github.com/goldenwind/fangxu-kindle-transfer" target="_blank" rel="noopener noreferrer" aria-label="GitHub 开源项目"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .7a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2.23c-3.22.7-3.9-1.37-3.9-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.17.08 1.78 1.2 1.78 1.2 1.04 1.78 2.72 1.27 3.38.97.1-.75.4-1.27.74-1.56-2.57-.29-5.27-1.29-5.27-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.16 1.18a10.9 10.9 0 0 1 5.76 0c2.2-1.49 3.16-1.18 3.16-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.4-2.7 5.38-5.28 5.67.42.36.79 1.06.79 2.14v3.18c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .7Z"/></svg><span data-i18n="githubProject">GitHub 开源</span></a>
@@ -1267,6 +1288,7 @@ const indexTemplate = `<!doctype html>
         </div>
       </div>
     </header>
+    <p class="important-notice format-warning"><strong data-i18n="transferReminder">传书提醒：</strong><span data-i18n="transferReminderText">EPUB、PDF 等格式无法在 Kindle 内置浏览器中直接下载。请在电脑端打开软件首页「电子书传输」，点击右侧的「打开 Send to Kindle」选择文件并发送。</span></p>
     {{if .Admin}}
     <div class="admin">
       <div class="admin-header">
@@ -1327,7 +1349,7 @@ const indexTemplate = `<!doctype html>
       {{end}}
     </div>
     <section id="direct-panel" class="tab-panel" role="tabpanel" aria-labelledby="direct-tab">
-      <p class="tab-note"><span data-i18n="directNote">在 Kindle 体验版浏览器中，轻点书名即可下载。支持 AZW3、MOBI、TXT、AZW、KFX 和 PRC。</span><span class="important-notice"><strong data-i18n="transferReminder">传书提醒：</strong><span data-i18n="transferReminderText">其他格式无法直接下载，请在电脑端打开本页面，通过电脑浏览器 Send to Kindle 云端传书。</span></span></p>
+      <p class="tab-note"><span data-i18n="directNote">在 Kindle 体验版浏览器中，轻点书名即可下载。支持 AZW3、MOBI、TXT、AZW、KFX 和 PRC。</span></p>
       <div class="filter-toolbar">
         <div class="format-filters" role="group" aria-label="筛选浏览器下载格式">
           <button class="format-filter active" type="button" data-filter-button onclick="filterBooks('direct', '', this)" data-i18n="allCount" data-count="{{len .DirectBooks}}">全部（{{len .DirectBooks}}）</button>
@@ -1399,7 +1421,7 @@ const indexTemplate = `<!doctype html>
         alipay: '支付宝', alipayNote: '打开支付宝扫一扫，感谢你的支持。', wechatPay: '微信支付', wechatPayNote: '打开微信扫一扫，感谢你的支持。',
         followYideng: '关注「一灯 AI」', followYidengNote: '微信扫码关注公众号，获取 AI 工具与效率实践。',
         myLibrary: '我的书架', bookSummary: '共收录 {count} 本电子书，默认按最近更新排列。', directTab: 'Kindle 内置浏览器下载（{count}）', sendTab: '电脑浏览器 Send to Kindle 云端传书（{count}）',
-        directNote: '在 Kindle 体验版浏览器中，轻点书名即可下载。支持 AZW3、MOBI、TXT、AZW、KFX 和 PRC。', transferReminder: '传书提醒：', transferReminderText: '其他格式无法直接下载，请在电脑端打开本页面，通过电脑浏览器 Send to Kindle 云端传书。',
+        directNote: '在 Kindle 体验版浏览器中，轻点书名即可下载。支持 AZW3、MOBI、TXT、AZW、KFX 和 PRC。', transferReminder: '传书提醒：', transferReminderText: 'EPUB、PDF 等格式无法在 Kindle 内置浏览器中直接下载。请在电脑端打开软件首页「电子书传输」，点击右侧的「打开 Send to Kindle」选择文件并发送。',
         allCount: '全部（{count}）', sortTimeDesc: '时间：从新到旧', sortTimeAsc: '时间：从旧到新', sortNameAsc: '名称：正序', sortNameDesc: '名称：倒序', sortLabel: '当前排序方式', noFormatBooks: '没有这种格式的电子书。', noDirectBooks: '没有可通过 Kindle 浏览器直接下载的电子书。',
         sendNote: 'Send to Kindle 仅支持 PDF、DOC、DOCX、TXT、RTF、HTM、HTML、PNG、GIF、JPG、JPEG、BMP 和 EPUB，单个文件最大 200 MB。', fileLimit: '文件限制：', fileLimitText: '本页只列出符合格式及大小限制的文件。',
         sendActionNote: '点击书籍可复制完整路径；点击“复制并打开Send to Kindle”可复制路径并前往上传页面。', uploadGuideTitle: '选择文件时，快速使用刚复制的完整路径',
@@ -1416,7 +1438,7 @@ const indexTemplate = `<!doctype html>
         alipay: 'Alipay', alipayNote: 'Scan with Alipay. Thank you for your support.', wechatPay: 'WeChat Pay', wechatPayNote: 'Scan with WeChat. Thank you for your support.',
         followYideng: 'Follow Yideng AI', followYidengNote: 'Scan in WeChat for AI tools and productivity tips.',
         myLibrary: 'My library', bookSummary: '{count} ebooks found, newest files first.', directTab: 'Kindle browser download ({count})', sendTab: 'Desktop Send to Kindle cloud transfer ({count})',
-        directNote: 'Tap a book title in the Kindle browser to download it. Supported formats: AZW3, MOBI, TXT, AZW, KFX, and PRC.', transferReminder: 'Transfer tip: ', transferReminderText: 'Other formats cannot be downloaded directly. Open this page on your computer and use Send to Kindle cloud transfer.',
+        directNote: 'Tap a book title in the Kindle browser to download it. Supported formats: AZW3, MOBI, TXT, AZW, KFX, and PRC.', transferReminder: 'Transfer tip: ', transferReminderText: 'EPUB, PDF and other formats cannot be downloaded directly in the Kindle browser. On your computer, go to Book transfer in the app and click “Open Send to Kindle” on the right to select and send a file.',
         allCount: 'All ({count})', sortTimeDesc: 'Time: newest first', sortTimeAsc: 'Time: oldest first', sortNameAsc: 'Name: ascending', sortNameDesc: 'Name: descending', sortLabel: 'Current sort order', noFormatBooks: 'No ebooks in this format.', noDirectBooks: 'No ebooks available for direct Kindle browser download.',
         sendNote: 'Send to Kindle supports PDF, DOC, DOCX, TXT, RTF, HTM, HTML, PNG, GIF, JPG, JPEG, BMP, and EPUB, with a maximum file size of 200 MB.', fileLimit: 'File limits: ', fileLimitText: 'Only files that meet the format and size limits are listed here.',
         sendActionNote: 'Click a book to copy its full path. Use “Copy & open Send to Kindle” to copy the path and open the upload page.', uploadGuideTitle: 'Quickly select a file using the copied full path',

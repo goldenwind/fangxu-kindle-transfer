@@ -1,0 +1,27 @@
+[package]
+name = "fangxu-kindle-transfer-desktop"
+version = "1.2.0"
+description = "Fangxu Kindle Transfer desktop client"
+authors = ["fangxu"]
+edition = "2021"
+license = "MIT"
+
+[lib]
+name = "fangxu_kindle_transfer_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde_json = "1"
+serde = { version = "1", features = ["derive"] }
+reqwest = { version = "0.13", default-features = false, features = ["native-tls", "system-proxy"] }
+semver = "1"
+uuid = { version = "1", features = ["v4"] }
+os_info = { version = "3", default-features = false }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-clipboard-manager = "2"
+tauri-plugin-single-instance = "2"

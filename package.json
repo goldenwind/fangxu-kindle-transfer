@@ -1,0 +1,31 @@
+{
+  "name": "fangxu-kindle-transfer",
+  "private": true,
+  "version": "1.2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:sidecar": "node scripts/build-sidecar.mjs",
+    "build:icons": "node scripts/build-icons.mjs",
+    "build:dmg-background": "swift scripts/build-dmg-background.swift",
+    "desktop:dev": "tauri dev",
+    "desktop:build": "tauri build",
+    "desktop:portable": "tauri build --target x86_64-pc-windows-msvc --no-bundle && npm run package:windows-portable",
+    "package:windows-portable": "pwsh -NoProfile -File scripts/package-windows-portable.ps1",
+    "tauri": "tauri",
+    "test": "node --test",
+    "check:version": "node scripts/check-release-version.mjs",
+    "check": "npm run check:version && go test ./... && go vet ./... && npm test && npm run build && npm run build:sidecar && cargo test --locked --manifest-path src-tauri/Cargo.toml"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "2.11.1",
+    "@tauri-apps/plugin-clipboard-manager": "2.2.0",
+    "@tauri-apps/plugin-dialog": "2.7.0",
+    "@tauri-apps/plugin-opener": "2.5.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "vite": "^7"
+  }
+}
